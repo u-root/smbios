@@ -29,7 +29,7 @@ func (i *Info) String() string {
 
 // ParseInfo parses SMBIOS information from binary data.
 func ParseInfo(entryData, tableData []byte) (*Info, error) {
-	entry, err := smbios.ParseEntry(entryData)
+	entry, err := smbios.ParseEntry(bytes.NewReader(entryData))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing entry point structure: %w", err)
 	}
