@@ -3,7 +3,10 @@
 // license that can be found in the LICENSE file.
 package smbios
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 var (
 	validTableHeaderRaw = []byte{0x0, 0xFF, 0xBE, 0xEF}
@@ -11,7 +14,7 @@ var (
 
 func TestParseTableHeader(t *testing.T) {
 	var h Header
-	if err := h.Parse(validTableHeaderRaw); err != nil {
+	if err := h.Parse(bytes.NewReader(validTableHeaderRaw)); err != nil {
 		t.Error(err)
 	}
 }

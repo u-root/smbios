@@ -49,7 +49,6 @@ func Test64MajorVersion(t *testing.T) {
 }
 
 func Test64MinorVersion(t *testing.T) {
-
 	info, err := setupMockData()
 	if err != nil {
 		t.Errorf("error parsing info data: %v", err)
@@ -60,7 +59,6 @@ func Test64MinorVersion(t *testing.T) {
 }
 
 func Test64DocRev(t *testing.T) {
-
 	info, err := setupMockData()
 	if err != nil {
 		t.Errorf("error parsing info data: %v", err)
@@ -71,7 +69,6 @@ func Test64DocRev(t *testing.T) {
 }
 
 func Test64GetTablesByType(t *testing.T) {
-
 	info, err := setupMockData()
 	if err != nil {
 		t.Errorf("error parsing info data: %v", err)
@@ -160,7 +157,6 @@ func FuzzParseInfo(f *testing.F) {
 
 func Test64Len(t *testing.T) {
 	info, err := setupMockData()
-
 	if err != nil {
 		t.Errorf("error parsing info Data: %v", err)
 	}
