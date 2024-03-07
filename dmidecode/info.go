@@ -18,60 +18,30 @@ const (
 
 // Info contains the SMBIOS information.
 type Info struct {
-	Entry32 *smbios.Entry32
-	Entry64 *smbios.Entry64
-	Tables  []*smbios.Table
+	Entry  smbios.EntryPoint
+	Tables []*smbios.Table
 }
 
 // String returns a summary of the SMBIOS version and number of tables.
 func (i *Info) String() string {
-	return fmt.Sprintf("SMBIOS %d.%d.%d (%d tables)", i.MajorVersion(), i.MinorVersion(), i.DocRev(), len(i.Tables))
+	return fmt.Sprintf("%s (%d tables)", i.Entry, len(i.Tables))
 }
 
 // ParseInfo parses SMBIOS information from binary data.
 func ParseInfo(entryData, tableData []byte) (*Info, error) {
-	info := &Info{}
-	var err error
-	info.Entry32, info.Entry64, err = smbios.ParseEntry(entryData)
+	entry, err := smbios.ParseEntry(entryData)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing entry point structure: %v", err)
+		return nil, fmt.Errorf("error parsing entry point structure: %w", err)
 	}
 	tables, err := smbios.ParseTables(bytes.NewReader(tableData))
 	if err != nil {
 		return nil, err
 	}
-	info.Tables = tables
-	return info, nil
-}
 
-// MajorVersion return major version of the SMBIOS spec.
-func (i *Info) MajorVersion() uint8 {
-	if i.Entry64 != nil {
-		return i.Entry64.MajorVersion
-	}
-	if i.Entry32 != nil {
-		return i.Entry32.MajorVersion
-	}
-	return 0
-}
-
-// MinorVersion return minor version of the SMBIOS spec.
-func (i *Info) MinorVersion() uint8 {
-	if i.Entry64 != nil {
-		return i.Entry64.MinorVersion
-	}
-	if i.Entry32 != nil {
-		return i.Entry32.MinorVersion
-	}
-	return 0
-}
-
-// DocRev return document revision of the SMBIOS spec.
-func (i *Info) DocRev() uint8 {
-	if i.Entry64 != nil {
-		return i.Entry64.DocRev
-	}
-	return 0
+	return &Info{
+		Tables: tables,
+		Entry:  entry,
+	}, nil
 }
 
 // GetTablesByType returns tables of specific type.

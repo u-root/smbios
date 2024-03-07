@@ -68,24 +68,29 @@ func parseTypeFilter(typeStrings []string) (map[smbios.TableType]bool, error) {
 
 func dumpBin(textOut io.Writer, entryData, tableData []byte, fileName string) *dmiDecodeError {
 	// Need to rewrite address to be compatible with dmidecode(8).
-	e32, e64, err := smbios.ParseEntry(entryData)
+	entry, err := smbios.ParseEntry(entryData)
 	if err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error parsing entry point structure: %v", err)}
 	}
-	var edata []byte
-	switch {
-	case e32 != nil:
-		e32.StructTableAddr = 0x20
-		edata, _ = e32.MarshalBinary()
-	case e64 != nil:
-		e64.StructTableAddr = 0x20
-		edata, _ = e64.MarshalBinary()
+
+	switch e := entry.(type) {
+	case *smbios.Entry32:
+		e.StructTableAddr = 0x20
+	case *smbios.Entry64:
+		e.StructTableAddr = 0x20
 	}
+
+	edata, err := entry.MarshalBinary()
+	if err != nil {
+		return &dmiDecodeError{code: 1, error: err}
+	}
+
 	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error opening file for writing: %v", err)}
 	}
 	defer f.Close()
+
 	fmt.Fprintf(textOut, "# Writing %d bytes to %s.\n", len(edata), fileName)
 	if _, err := f.Write(edata); err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error writing entry: %v", err)}
@@ -95,6 +100,7 @@ func dumpBin(textOut io.Writer, entryData, tableData []byte, fileName string) *d
 			return &dmiDecodeError{code: 1, error: fmt.Errorf("error writing entry: %v", err)}
 		}
 	}
+
 	fmt.Fprintf(textOut, "# Writing %d bytes to %s.\n", len(tableData), fileName)
 	if _, err := f.Write(tableData); err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error writing table data: %v", err)}
@@ -119,13 +125,9 @@ func dmiDecode(textOut io.Writer) *dmiDecodeError {
 	if err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error parsing data: %v", err)}
 	}
-	if si.Entry64 != nil {
-		fmt.Fprintf(textOut, "SMBIOS %d.%d.%d present.\n", si.MajorVersion(), si.MinorVersion(), si.DocRev())
-	} else {
-		fmt.Fprintf(textOut, "SMBIOS %d.%d present.\n", si.MajorVersion(), si.MinorVersion())
-	}
-	if si.Entry32 != nil {
-		fmt.Fprintf(textOut, "%d structures occupying %d bytes.\n", si.Entry32.NumberOfStructs, si.Entry32.StructTableLength)
+	fmt.Fprintf(textOut, "%s present.\n", si.Entry)
+	if e32, ok := si.Entry.(*smbios.Entry32); ok {
+		fmt.Fprintf(textOut, "%d structures occupying %d bytes.\n", e32.NumberOfStructs, e32.StructTableLength)
 	}
 	fmt.Fprintf(textOut, "\n")
 	for _, t := range si.Tables {
