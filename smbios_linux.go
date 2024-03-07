@@ -15,8 +15,32 @@ import (
 
 var systabPath = "/sys/firmware/efi/systab"
 
-// BaseEFI finds the SMBIOS entry point address in the EFI System Table.
-func BaseEFI() (base int64, size int64, err error) {
+// EntryBase returns SMBIOS base pointer, which points to the entry point address.
+func EntryBase() (int64, int64, error) {
+	base, size, err := EntryBaseFromEFI()
+	if err != nil {
+		base, size, err = EntryBaseFromLegacy()
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	return base, size, nil
+}
+
+// EntryBaseFromLegacy searches in SMBIOS entry point address in F0000 segment.
+//
+// NOTE: Legacy BIOS will store their SMBIOS in this region.
+func EntryBaseFromLegacy() (int64, int64, error) {
+	f, err := os.Open("/dev/mem")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer f.Close()
+	return getMemBase(f, 0xf0000, 0x100000)
+}
+
+// EntryBaseFromEFI finds the SMBIOS entry point address in the EFI System Table.
+func EntryBaseFromEFI() (base int64, size int64, err error) {
 	file, err := os.Open(systabPath)
 	if err != nil {
 		return 0, 0, err

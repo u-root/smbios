@@ -10,7 +10,7 @@ import (
 
 func TestSMBIOSEFISMBIOS2(t *testing.T) {
 	systabPath = "testdata/smbios2_systab"
-	base, size, err := BaseEFI()
+	base, size, err := EntryBaseFromEFI()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestSMBIOSEFISMBIOS2(t *testing.T) {
 
 func TestSMBIOSEFISMBIOS3(t *testing.T) {
 	systabPath = "testdata/smbios3_systab"
-	base, size, err := BaseEFI()
+	base, size, err := EntryBaseFromEFI()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,16 +44,28 @@ func TestSMBIOSEFISMBIOS3(t *testing.T) {
 
 func TestSMBIOSEFINotFound(t *testing.T) {
 	systabPath = "testdata/systab_NOT_FOUND"
-	_, _, err := BaseEFI()
-	if err == nil {
+	if _, _, err := EntryBaseFromEFI(); err == nil {
 		t.Errorf("BaseEFI(): nil , want error")
 	}
 }
 
 func TestSMBIOSEFIInvalid(t *testing.T) {
 	systabPath = "testdata/invalid_systab"
-	_, _, err := BaseEFI()
+	_, _, err := EntryBaseFromEFI()
 	if err == nil {
 		t.Errorf("BaseEFI(): nil , want error")
+	}
+}
+
+func TestBaseEFI(t *testing.T) {
+	systabPath = "testdata/smbios3_systab"
+	base, _, err := EntryBase()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var want int64 = 0x12345678
+	if base != want {
+		t.Errorf("Base(): 0x%x, want 0x%x", base, want)
 	}
 }
