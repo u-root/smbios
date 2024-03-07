@@ -28,8 +28,6 @@ var (
 	ErrTableNotFound = errors.New("table not found")
 )
 
-var tableSep = []byte{0, 0}
-
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {
 	return len(t.Data) + headerLen
