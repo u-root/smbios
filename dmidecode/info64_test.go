@@ -13,16 +13,6 @@ import (
 	"github.com/u-root/smbios"
 )
 
-func Test64ParseInfo(t *testing.T) {
-	info, err := setupMockData()
-	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
-	}
-	if info.Entry32 != nil {
-		t.Errorf("false detection of 32-bit SMBIOS table header")
-	}
-}
-
 func Test64ParseInfoHeaderMalformed(t *testing.T) {
 	data, err := os.ReadFile("./testdata/smbios_table.bin")
 	if err != nil {
@@ -43,28 +33,15 @@ func Test64MajorVersion(t *testing.T) {
 	if err != nil {
 		t.Errorf("error parsing info data: %v", err)
 	}
-	if info.MajorVersion() != 3 {
-		t.Errorf("major version should be 3 - got %d", info.MajorVersion())
+	major, minor, rev := info.Entry.Version()
+	if major != 3 {
+		t.Errorf("major version = %d, want 3", major)
 	}
-}
-
-func Test64MinorVersion(t *testing.T) {
-	info, err := setupMockData()
-	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
+	if minor != 1 {
+		t.Errorf("minor version = %d, want 1", minor)
 	}
-	if info.MinorVersion() != 1 {
-		t.Errorf("minor version should be 1 - got %d", info.MinorVersion())
-	}
-}
-
-func Test64DocRev(t *testing.T) {
-	info, err := setupMockData()
-	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
-	}
-	if info.DocRev() != 1 {
-		t.Errorf("doc revision should be 1 - got %d", info.DocRev())
+	if rev != 1 {
+		t.Errorf("doc revision = %d, want 1", rev)
 	}
 }
 
@@ -118,7 +95,6 @@ func FuzzParseInfo(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-
 		if len(data) < 64 || len(data) > 4096 {
 			return
 		}
@@ -130,17 +106,7 @@ func FuzzParseInfo(f *testing.F) {
 		if err != nil {
 			return
 		}
-
-		var entry []byte
-		//nolint
-		if info.Entry32 != nil {
-			entry, err = info.Entry32.MarshalBinary()
-		} else if info.Entry64 != nil {
-			entry, err = info.Entry64.MarshalBinary()
-		} else {
-			t.Fatalf("expected a SMBIOS 32-Bit or 64-Bit entry point but got none")
-		}
-
+		entry, err := info.Entry.MarshalBinary()
 		if err != nil {
 			t.Fatalf("failed to unmarshal entry data")
 		}

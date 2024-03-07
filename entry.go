@@ -45,17 +45,17 @@ func calcChecksum(data []byte, skipIndex int) uint8 {
 }
 
 // ParseEntry parses SMBIOS 32 or 64-bit entrypoint structure.
-func ParseEntry(data []byte) (*Entry32, *Entry64, error) {
+func ParseEntry(data []byte) (EntryPoint, error) {
 	// Entry is either 32 or 64-bit, try them both.
 	var e32 Entry32
 	if err32 := e32.UnmarshalBinary(data); err32 != nil {
 		var e64 Entry64
 		if err64 := e64.UnmarshalBinary(data); err64 != nil {
-			return nil, nil, fmt.Errorf("%s / %s", err32, err64)
+			return nil, fmt.Errorf("%s / %s", err32, err64)
 		}
-		return nil, &e64, nil
+		return &e64, nil
 	}
-	return &e32, nil, nil
+	return &e32, nil
 }
 
 // Entry32 is the SMBIOS 32-Bit entry point structure, described in DSP0134 5.2.1.
@@ -90,7 +90,7 @@ func (e *Entry32) Version() (major, minor, rev int) {
 
 // String returns a summary of the SMBIOS version.
 func (e *Entry32) String() string {
-	return fmt.Sprintf("SMBIOS %d.%d.0", e.MajorVersion, e.MinorVersion)
+	return fmt.Sprintf("SMBIOS %d.%d", e.MajorVersion, e.MinorVersion)
 }
 
 // UnmarshalBinary unmarshals the SMBIOS 32-Bit entry point structure from binary data.
