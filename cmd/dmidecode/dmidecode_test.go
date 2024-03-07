@@ -17,16 +17,14 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-const (
-	testDataDir = "testdata"
-)
-
 func resetFlags() {
 	*flagFromDump = ""
 	*flagType = nil
 }
 
 func testOutput(t *testing.T, dumpFile string, args []string, expectedOutFile string) {
+	t.Helper()
+
 	actualOutFile := fmt.Sprintf("%s.actual", expectedOutFile)
 	os.Remove(actualOutFile)
 	os.Args = []string{os.Args[0], "--from-dump", dumpFile}
@@ -45,7 +43,7 @@ func testOutput(t *testing.T, dumpFile string, args []string, expectedOutFile st
 		return
 	}
 	if !bytes.Equal(actualOut, expectedOut) {
-		os.WriteFile(actualOutFile, actualOut, 0o644)
+		_ = os.WriteFile(actualOutFile, actualOut, 0o644)
 		t.Errorf("%+v %+v %+v: output mismatch, see %s", dumpFile, args, expectedOutFile, actualOutFile)
 		diffOut, _ := exec.Command("diff", "-u", expectedOutFile, actualOutFile).CombinedOutput()
 		t.Errorf("%+v %+v %+v: diff:\n%s", dumpFile, args, expectedOutFile, string(diffOut))
@@ -69,6 +67,8 @@ func TestDMIDecodeTypeFilters(t *testing.T) {
 }
 
 func testDumpBin(t *testing.T, entryData, expectedOutData []byte) {
+	t.Helper()
+
 	tmpfile, err := os.CreateTemp("", "dmidecode")
 	if err != nil {
 		t.Fatalf("error creating temp file: %v", err)

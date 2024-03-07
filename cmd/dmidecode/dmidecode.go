@@ -2,6 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// dmidecode - DMI table decoder
+//
+// dmidecode is a tool for dumping a computer's DMI (some say SMBIOS) table
+// contents in a human-readable format. This table contains a description of
+// the system's hardware components, as well as other useful pieces of
+// information such as serial numbers and BIOS revision.
 package main
 
 import (
