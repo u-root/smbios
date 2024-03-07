@@ -13,11 +13,11 @@ import (
 
 var memioRead = memio.Read
 
-// getSMBIOSBase searches _SM_ or _SM3_ tag in the given memory range.
-func getSMBIOSBase(start, end int64) (int64, int64, error) {
+// getBase searches _SM_ or _SM3_ tag in the given memory range.
+func getBase(start, end int64) (int64, int64, error) {
 	for base := start; base < end; base++ {
 		dat := memio.ByteSlice(make([]byte, 5))
-		if err := memioRead(int64(base), &dat); err != nil {
+		if err := memioRead(base, &dat); err != nil {
 			return 0, 0, err
 		}
 		if bytes.Equal(dat[:4], []byte("_SM_")) {
@@ -30,8 +30,9 @@ func getSMBIOSBase(start, end int64) (int64, int64, error) {
 	return 0, 0, fmt.Errorf("could not find _SM_ or _SM3_ via /dev/mem from %#08x to %#08x", start, end)
 }
 
-// SMBIOSBaseLegacy searches in SMBIOS entry point address in F0000 segment.
+// BaseLegacy searches in SMBIOS entry point address in F0000 segment.
+//
 // NOTE: Legacy BIOS will store their SMBIOS in this region.
-func SMBIOSBaseLegacy() (int64, int64, error) {
-	return getSMBIOSBase(0xf0000, 0x100000)
+func BaseLegacy() (int64, int64, error) {
+	return getBase(0xf0000, 0x100000)
 }
