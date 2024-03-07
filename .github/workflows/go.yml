@@ -1,0 +1,93 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Every day at 8am.
+    - cron: "0 8 * * *"
+
+# Cancel running workflows on new push to a PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tidy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.22.x']
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: tidy
+        run: |
+          go mod tidy
+          go mod verify
+          git status
+          if [[ -n "$(git status --porcelain .)" ]]; then
+            echo 'go.mod/go.sum is out-of-date: run `go mod tidy` in the right module directories (see git status) and then check in the changes'
+            echo 'If `go mod tidy` results in no changes, make sure you are using the latest relase of Go'
+            git status --porcelain .
+            exit 1
+          fi
+      - name: gofmt
+        run: test -z "$(gofmt -s -l $(find -name '*.go'))"
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.21.x', '1.22.x']
+        vmarch: [ 'amd64', 'arm64', 'riscv64' ]
+        goarm: ['']
+        include:
+          # QEMU arm -M virt seems to support only v5. GOARM default as of 1.21
+          # is v7.
+          - go-version: '1.21.x'
+            vmarch: 'arm'
+            goarm: '5'
+          # QEMU arm -M virt seems to support only v5. GOARM default as of 1.21
+          # is v7.
+          - go-version: '1.22.x'
+            vmarch: 'arm'
+            goarm: '5'
+
+    env:
+      VMTEST_ARCH: ${{ matrix.vmarch }}
+      GOARM: ${{ matrix.goarm }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Build runvm tool
+        run: go install github.com/hugelgupf/vmtest/tools/runvmtest@latest
+
+      - name: Test
+        run: |
+          mkdir gocov
+          VMTEST_GOCOVERDIR=$(pwd)/gocov runvmtest -- \
+            go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Convert GOCOVERDIR coverage data
+        run: go tool covdata textfmt -i=gocov -o vmintcoverage.txt
+
+      - uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: '8f2acc03-f59a-44de-b759-e3403f3f89ba'
+        with:
+          flags: ${{ matrix.vmarch }}-${{ matrix.go-version }}
+          fail_ci_if_error: true
+          verbose: true
