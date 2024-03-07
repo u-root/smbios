@@ -1,6 +1,6 @@
 module github.com/u-root/smbios
 
-go 1.22
+go 1.21
 
 require (
 	github.com/hugelgupf/vmtest v0.0.0-20240306161034-1a05e5dde725
