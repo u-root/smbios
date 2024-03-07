@@ -14,6 +14,11 @@ import (
 	"io"
 )
 
+const (
+	smbios2HeaderSize = 0x1f
+	smbios3HeaderSize = 0x18
+)
+
 // Entry point errors.
 var (
 	ErrInvalidAnchor = errors.New("invalid anchor string")

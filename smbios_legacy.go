@@ -6,33 +6,28 @@ package smbios
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/u-root/u-root/pkg/memio"
+	"errors"
+	"io"
 )
 
-var memioRead = memio.Read
+// Errors for entry points.
+var (
+	ErrAnchorNotFound = errors.New("SMBIOS anchor _SM_ or _SM3_ not found")
+)
 
-// getBase searches _SM_ or _SM3_ tag in the given memory range.
-func getBase(start, end int64) (int64, int64, error) {
-	for base := start; base < end; base++ {
-		dat := memio.ByteSlice(make([]byte, 5))
-		if err := memioRead(base, &dat); err != nil {
+// getMemBase searches _SM_ or _SM3_ tag in the given memory range.
+func getMemBase(r io.ReaderAt, start, end int64) (addr int64, size int64, err error) {
+	b := make([]byte, 5)
+	for base := start; base < end-5; base++ {
+		if _, err := io.ReadFull(io.NewSectionReader(r, base, 5), b); err != nil {
 			return 0, 0, err
 		}
-		if bytes.Equal(dat[:4], []byte("_SM_")) {
+		if bytes.Equal(b[:4], anchor32) {
 			return base, smbios2HeaderSize, nil
 		}
-		if bytes.Equal(dat[:], []byte("_SM3_")) {
+		if bytes.Equal(b, anchor64) {
 			return base, smbios3HeaderSize, nil
 		}
 	}
-	return 0, 0, fmt.Errorf("could not find _SM_ or _SM3_ via /dev/mem from %#08x to %#08x", start, end)
-}
-
-// BaseLegacy searches in SMBIOS entry point address in F0000 segment.
-//
-// NOTE: Legacy BIOS will store their SMBIOS in this region.
-func BaseLegacy() (int64, int64, error) {
-	return getBase(0xf0000, 0x100000)
+	return 0, 0, ErrAnchorNotFound
 }

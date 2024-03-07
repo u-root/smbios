@@ -5,95 +5,65 @@
 package smbios
 
 import (
-	"fmt"
+	"bytes"
+	"errors"
+	"io"
 	"runtime"
 	"testing"
 
 	"github.com/hugelgupf/vmtest/guest"
-	"github.com/u-root/u-root/pkg/memio"
 )
 
-var tmpBuf = []byte{0, 0, 0, 0, 0, 0}
-
-func mockMemioRead(base int64, uintn memio.UintN) error {
-	dat, ok := uintn.(*memio.ByteSlice)
-	if !ok {
-		return fmt.Errorf("not supported")
-	}
-	bufLen := len(tmpBuf)
-	for i := int64(0); i < dat.Size(); i++ {
-		(*dat)[i] = tmpBuf[(base+i)%int64(bufLen)]
-	}
-	return nil
-}
-
-func TestSMBIOSLegacyNotFound(t *testing.T) {
-	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
-	memioRead = mockMemioRead
-
-	_, _, err := BaseLegacy()
-
-	want := "could not find _SM_ or _SM3_ via /dev/mem from 0x000f0000 to 0x00100000"
-	if err.Error() != want {
-		t.Errorf("BaseLegacy(): %v, want '%v'", err, want)
-	}
-}
-
-func TestSMBIOSLegacyMemIoReadError(t *testing.T) {
-	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
-	memioRead = func(base int64, uintn memio.UintN) error {
-		return fmt.Errorf("MEMIOREAD_ERROR")
-	}
-
-	_, _, err := BaseLegacy()
-
-	want := "MEMIOREAD_ERROR"
-	if err.Error() != want {
-		t.Errorf("BaseLegacy(): %v, want '%v'", err, want)
-	}
-}
-
-func TestSMBIOSLegacySMBIOS(t *testing.T) {
-	tmpBuf = []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S', 'M', '_', 0, 0, 0, 0, 0}
-	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
-	memioRead = mockMemioRead
-	base, size, err := BaseLegacy()
-	if err != nil {
-		t.Errorf("BaseLegacy(): %v", err)
-	}
-
-	var want int64 = 0xf0007
-
-	if base != want {
-		t.Errorf("BaseLegacy(): %v, want '%v'", base, want)
-	}
-
-	var wantSize int64 = 0x1f
-
-	if size != wantSize {
-		t.Errorf("BaseLegacy(): %v, want '%v'", size, wantSize)
-	}
-}
-
-func TestSMBIOSLegacySMBIOS3(t *testing.T) {
-	tmpBuf = []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S', 'M', '3', '_', 0, 0, 0, 0, 0}
-	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
-	memioRead = mockMemioRead
-	base, size, err := BaseLegacy()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var want int64 = 0xf0009
-
-	if base != want {
-		t.Errorf("BaseLegacy(): %v, want '%v'", base, want)
-	}
-
-	var wantSize int64 = 0x18
-
-	if size != wantSize {
-		t.Errorf("BaseLegacy(): %v, want '%v'", size, wantSize)
+func TestLegacy(t *testing.T) {
+	for _, tt := range []struct {
+		// in
+		b     []byte
+		start int64
+		end   int64
+		// out
+		addr int64
+		size int64
+		err  error
+	}{
+		{
+			b:     bytes.Repeat([]byte{0}, 100),
+			start: 10,
+			end:   100,
+			err:   ErrAnchorNotFound,
+		},
+		{
+			b:     []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S', 'M', '_', 0, 0, 0, 0, 0},
+			start: 1,
+			end:   15,
+			addr:  7,
+			size:  smbios2HeaderSize,
+		},
+		{
+			b:     []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S', 'M', '3', '_', 0, 0, 0, 0, 0},
+			start: 1,
+			end:   15,
+			addr:  7,
+			size:  smbios3HeaderSize,
+		},
+		{
+			b:     []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S'},
+			start: 1,
+			end:   15,
+			err:   io.ErrUnexpectedEOF,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			addr, size, err := getMemBase(bytes.NewReader(tt.b), tt.start, tt.end)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("getMemBase = %v, want %v", err, tt.err)
+			}
+			if addr != tt.addr {
+				t.Errorf("getMemBase = addr %x, want %x", addr, tt.addr)
+			}
+			if size != tt.size {
+				t.Errorf("getMemBase = size %x, want %x", size, tt.size)
+			}
+		})
 	}
 }
 
@@ -103,11 +73,10 @@ func TestSMBIOSLegacyQEMU(t *testing.T) {
 		t.Skipf("test not supported on %s", runtime.GOARCH)
 	}
 
-	base, size, err := BaseLegacy()
+	base, size, err := EntryBaseFromLegacy()
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if base == 0 {
 		t.Errorf("SMBIOSLegacy() does not get SMBIOS base")
 	}
