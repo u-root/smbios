@@ -45,7 +45,7 @@ func Test64Len(t *testing.T) {
 	info, err := setupMockData()
 
 	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
+		t.Errorf("error parsing info Data: %v", err)
 	}
 
 	if info.Tables != nil {
@@ -69,7 +69,7 @@ OEM-specific Type
 	info, err := setupMockData()
 
 	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
+		t.Errorf("error parsing info Data: %v", err)
 	}
 
 	if info.Tables != nil {
@@ -86,8 +86,8 @@ func Test64GetByteAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {
@@ -130,8 +130,8 @@ func Test64GetBytesAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {
@@ -185,8 +185,8 @@ func Test64GetWordAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 0, 0, 0, 0, 0, 0},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 0, 0, 0, 0, 0, 0},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {
@@ -236,8 +236,8 @@ func Test64GetDWordAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 0, 0, 0, 0},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 0, 0, 0, 0},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {
@@ -287,8 +287,8 @@ func Test64GetQWordAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 15, 16, 17, 18},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 15, 16, 17, 18},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {
@@ -381,8 +381,8 @@ func Test64GetStringAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
 	tests := []struct {

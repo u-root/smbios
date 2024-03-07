@@ -16,8 +16,9 @@ import (
 // it only allows access to its contents by offset.
 type Table struct {
 	Header
-	data    []byte   `smbios:"-"` // Structured part of the table.
-	strings []string `smbios:"-"` // Strings section.
+
+	Data    []byte   `smbios:"-"` // Structured part of the table.
+	Strings []string `smbios:"-"` // Strings section.
 }
 
 var (
@@ -27,7 +28,7 @@ var (
 	// ErrUnsupportedTableType is returned by ParseTypedTable if this table type is not supported and cannot be parsed.
 	ErrUnsupportedTableType = errors.New("unsupported table type")
 
-	errEndOfTable = errors.New("end of table")
+	ErrEndOfTable = errors.New("end of table")
 
 	tableSep = []byte{0, 0}
 )
@@ -38,64 +39,64 @@ const (
 
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {
-	return len(t.data)
+	return len(t.Data)
 }
 
 // GetByteAt returns a byte from the structured part at the specified offset.
 func (t *Table) GetByteAt(offset int) (uint8, error) {
-	if offset > len(t.data)-1 {
+	if offset > len(t.Data)-1 {
 		return 0, fmt.Errorf("invalid offset %d", offset)
 	}
-	return t.data[offset], nil
+	return t.Data[offset], nil
 }
 
 // GetBytesAt returns a number of bytes from the structured part at the specified offset.
 func (t *Table) GetBytesAt(offset, length int) ([]byte, error) {
-	if offset > len(t.data)-length {
+	if offset > len(t.Data)-length {
 		return nil, fmt.Errorf("invalid offset %d", offset)
 	}
-	return t.data[offset : offset+length], nil
+	return t.Data[offset : offset+length], nil
 }
 
 // GetWordAt returns a 16-bit word from the structured part at the specified offset.
 func (t *Table) GetWordAt(offset int) (res uint16, err error) {
-	if offset > len(t.data)-2 {
+	if offset > len(t.Data)-2 {
 		return 0, fmt.Errorf("invalid offset %d", offset)
 	}
-	err = binary.Read(bytes.NewReader(t.data[offset:offset+2]), binary.LittleEndian, &res)
+	err = binary.Read(bytes.NewReader(t.Data[offset:offset+2]), binary.LittleEndian, &res)
 	return res, err
 }
 
 // GetDWordAt returns a 32-bit word from the structured part at the specified offset.
 func (t *Table) GetDWordAt(offset int) (res uint32, err error) {
-	if offset > len(t.data)-4 {
+	if offset > len(t.Data)-4 {
 		return 0, fmt.Errorf("invalid offset %d", offset)
 	}
-	err = binary.Read(bytes.NewReader(t.data[offset:offset+4]), binary.LittleEndian, &res)
+	err = binary.Read(bytes.NewReader(t.Data[offset:offset+4]), binary.LittleEndian, &res)
 	return res, err
 }
 
 // GetQWordAt returns a 64-bit word from the structured part at the specified offset.
 func (t *Table) GetQWordAt(offset int) (res uint64, err error) {
-	if offset > len(t.data)-8 {
+	if offset > len(t.Data)-8 {
 		return 0, fmt.Errorf("invalid offset %d", offset)
 	}
-	err = binary.Read(bytes.NewReader(t.data[offset:offset+8]), binary.LittleEndian, &res)
+	err = binary.Read(bytes.NewReader(t.Data[offset:offset+8]), binary.LittleEndian, &res)
 	return res, err
 }
 
 // GetStringAt returns a string pointed to by the byte at the specified offset in the structured part.
 // NB: offset is not the string index.
 func (t *Table) GetStringAt(offset int) (string, error) {
-	if offset >= len(t.data) {
+	if offset >= len(t.Data) {
 		return "", fmt.Errorf("invalid offset %d", offset)
 	}
-	stringIndex := t.data[offset]
+	stringIndex := t.Data[offset]
 	switch {
 	case stringIndex == 0:
 		return "Not Specified", nil
-	case int(stringIndex) <= len(t.strings):
-		return t.strings[stringIndex-1], nil
+	case int(stringIndex) <= len(t.Strings):
+		return t.Strings[stringIndex-1], nil
 	default:
 		return "<BAD INDEX>", fmt.Errorf("invalid string index %d", stringIndex)
 	}
@@ -106,7 +107,7 @@ func (t *Table) String() string {
 		t.Header.String(),
 		"\tHeader and Data:",
 	}
-	data := t.data
+	data := t.Data
 	for len(data) > 0 {
 		ld := data
 		if len(ld) > 16 {
@@ -119,9 +120,9 @@ func (t *Table) String() string {
 		lines = append(lines, "\t\t"+strings.Join(ls, " "))
 		data = data[len(ld):]
 	}
-	if len(t.strings) > 0 {
+	if len(t.Strings) > 0 {
 		lines = append(lines, "\tStrings:")
-		for _, s := range t.strings {
+		for _, s := range t.Strings {
 			lines = append(lines, "\t\t"+s)
 		}
 	}
@@ -165,9 +166,9 @@ func ParseTable(data []byte) (*Table, []byte, error) {
 	}
 	data = data[endOfTableIndex+2:]
 	if h.Type == TableTypeEndOfTable {
-		err = errEndOfTable
+		err = ErrEndOfTable
 	}
-	return &Table{Header: h, data: structData, strings: strings}, data, err
+	return &Table{Header: h, Data: structData, Strings: strings}, data, err
 }
 
 func kmgt(v uint64) string {

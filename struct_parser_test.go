@@ -29,7 +29,7 @@ func TestParseStructUnsupported(t *testing.T) {
 	want := "unsupported type float32"
 
 	table := Table{
-		data: buffer,
+		Data: buffer,
 	}
 
 	UnknownType := &UnknownTypes{
@@ -55,7 +55,7 @@ func TestParseStructSupported(t *testing.T) {
 	}
 
 	table := Table{
-		data: buffer,
+		Data: buffer,
 	}
 
 	UnknownType := &UnknownTypes{
@@ -142,8 +142,8 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			table := Table{
-				data:    tt.buffer,
-				strings: tt.strings,
+				Data:    tt.buffer,
+				Strings: tt.strings,
 			}
 			TPMDev := &TPMDevice{
 				Table: table,
@@ -156,8 +156,8 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 					Length: tt.buffer[1],
 					Handle: binary.BigEndian.Uint16([]byte{tt.buffer[3], tt.buffer[2]}),
 				},
-				data:    tt.buffer,
-				strings: tt.strings,
+				Data:    tt.buffer,
+				Strings: tt.strings,
 			}
 
 			off, err := parseStruct(&table, 0, tt.complete, TPMDev)
