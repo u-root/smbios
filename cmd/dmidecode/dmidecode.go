@@ -11,6 +11,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -68,7 +69,7 @@ func parseTypeFilter(typeStrings []string) (map[smbios.TableType]bool, error) {
 
 func dumpBin(textOut io.Writer, entryData, tableData []byte, fileName string) *dmiDecodeError {
 	// Need to rewrite address to be compatible with dmidecode(8).
-	entry, err := smbios.ParseEntry(entryData)
+	entry, err := smbios.ParseEntry(bytes.NewReader(entryData))
 	if err != nil {
 		return &dmiDecodeError{code: 1, error: fmt.Errorf("error parsing entry point structure: %v", err)}
 	}

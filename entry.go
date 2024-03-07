@@ -5,17 +5,18 @@
 package smbios
 
 import (
+	"bufio"
 	"bytes"
 	"encoding"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 )
 
 // Entry point errors.
 var (
-	ErrInvalidAnchor32 = errors.New("invalid anchor string")
-	ErrInvalidAnchor64 = errors.New("invalid anchor string")
+	ErrInvalidAnchor = errors.New("invalid anchor string")
 )
 
 // EntryPoint is an SMBIOS entry point.
@@ -44,18 +45,41 @@ func calcChecksum(data []byte, skipIndex int) uint8 {
 	return uint8(0x100 - int(cs))
 }
 
+var (
+	anchor32 = []byte("_SM_")
+	anchor64 = []byte("_SM3_")
+)
+
 // ParseEntry parses SMBIOS 32 or 64-bit entrypoint structure.
-func ParseEntry(data []byte) (EntryPoint, error) {
-	// Entry is either 32 or 64-bit, try them both.
-	var e32 Entry32
-	if err32 := e32.UnmarshalBinary(data); err32 != nil {
-		var e64 Entry64
-		if err64 := e64.UnmarshalBinary(data); err64 != nil {
-			return nil, fmt.Errorf("%s / %s", err32, err64)
-		}
-		return &e64, nil
+func ParseEntry(r io.Reader) (EntryPoint, error) {
+	br := bufio.NewReader(r)
+	peek, err := br.Peek(5)
+	if err != nil {
+		return nil, convertUnexpectedEOF(err)
 	}
-	return &e32, nil
+
+	var e EntryPoint
+	var data []byte
+	switch {
+	case bytes.Equal(peek[:4], anchor32):
+		data = make([]byte, 0x1f)
+		e = &Entry32{}
+
+	case bytes.Equal(peek, anchor64):
+		data = make([]byte, 0x18)
+		e = &Entry64{}
+
+	default:
+		return nil, fmt.Errorf("%w: %x", ErrInvalidAnchor, peek[:4])
+	}
+
+	if _, err := io.ReadFull(br, data); err != nil {
+		return nil, convertUnexpectedEOF(err)
+	}
+	if err := e.UnmarshalBinary(data); err != nil {
+		return nil, err
+	}
+	return e, nil
 }
 
 // Entry32 is the SMBIOS 32-Bit entry point structure, described in DSP0134 5.2.1.
@@ -95,15 +119,13 @@ func (e *Entry32) String() string {
 
 // UnmarshalBinary unmarshals the SMBIOS 32-Bit entry point structure from binary data.
 func (e *Entry32) UnmarshalBinary(data []byte) error {
-	if len(data) < 0x1f {
-		return fmt.Errorf("invalid entry point stucture length %d", len(data))
-	}
 	if err := binary.Read(bytes.NewReader(data), binary.LittleEndian, e); err != nil {
 		return err
 	}
-	if !bytes.Equal(e.Anchor[:], []byte("_SM_")) {
-		return fmt.Errorf("%w: %q", ErrInvalidAnchor32, string(e.Anchor[:]))
+	if !bytes.Equal(e.Anchor[:], anchor32) {
+		return fmt.Errorf("%w: %q", ErrInvalidAnchor, string(e.Anchor[:]))
 	}
+
 	if int(e.Length) != 0x1f {
 		return fmt.Errorf("length mismatch: %d vs %d", e.Length, len(data))
 	}
@@ -167,15 +189,13 @@ func (e *Entry64) String() string {
 
 // UnmarshalBinary unmarshals the SMBIOS 64-Bit entry point structure from binary data.
 func (e *Entry64) UnmarshalBinary(data []byte) error {
-	if len(data) < 0x18 {
-		return fmt.Errorf("invalid entry point stucture length %d", len(data))
-	}
 	if err := binary.Read(bytes.NewReader(data), binary.LittleEndian, e); err != nil {
 		return err
 	}
-	if !bytes.Equal(e.Anchor[:], []byte("_SM3_")) {
-		return fmt.Errorf("%w: %q", ErrInvalidAnchor64, string(e.Anchor[:]))
+	if !bytes.Equal(e.Anchor[:], anchor64) {
+		return fmt.Errorf("%w: %q", ErrInvalidAnchor, string(e.Anchor[:]))
 	}
+
 	if int(e.Length) != 0x18 {
 		return fmt.Errorf("length mismatch: %d vs %d", e.Length, len(data))
 	}
