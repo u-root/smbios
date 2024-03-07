@@ -32,19 +32,14 @@ type UnknownTypes struct {
 
 func TestParseStructUnsupported(t *testing.T) {
 	buffer := []byte{
-		0x77,
-		0xFF,
-		0x00, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 		0x00, 0x01, 0x02, 0x03,
 	}
 
 	want := "unsupported type float32"
-
 	table := smbios.Table{
 		Data: buffer,
 	}
-
 	UnknownType := &UnknownTypes{
 		Table: table,
 	}
@@ -59,28 +54,22 @@ func TestParseStructUnsupported(t *testing.T) {
 
 func TestParseStructSupported(t *testing.T) {
 	buffer := []byte{
-		0x77,
-		0xFF,
-		0x00, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 	}
-
 	table := smbios.Table{
 		Data: buffer,
 	}
-
-	UnknownType := &UnknownTypes{
+	unknownType := &UnknownTypes{
 		Table: table,
 	}
 
-	off, err := parseStruct(&table, 0, false, UnknownType)
+	off, err := parseStruct(&table, 0, false, unknownType)
 	if err != nil {
 		t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: 'nil'", off, err)
 	}
 }
 
 func TestParseStructWithTPMDevice(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		buffer   []byte
@@ -92,9 +81,6 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 		{
 			name: "Type43TPMDevice",
 			buffer: []byte{
-				0x2B,       // Type
-				0xFF,       // Length
-				0x00, 0x11, // Handle
 				0x00, 0x00, 0x00, 0x00, // VendorID
 				0x02,       // Major
 				0x03,       // Minor
@@ -122,9 +108,6 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 		{
 			name: "Type43TPMDevice Incomplete",
 			buffer: []byte{
-				0x2B,       // Type
-				0xFF,       // Length
-				0x00, 0x11, // Handle
 				0x00, 0x00, 0x00, 0x00, // VendorID
 				0x02,       // Major
 				0x03,       // Minor

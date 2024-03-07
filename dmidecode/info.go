@@ -6,6 +6,7 @@
 package dmidecode
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/u-root/smbios"
@@ -35,14 +36,11 @@ func ParseInfo(entryData, tableData []byte) (*Info, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing entry point structure: %v", err)
 	}
-	for len(tableData) > 0 {
-		t, remainder, err := smbios.ParseTable(tableData)
-		if err != nil && err != smbios.ErrEndOfTable {
-			return nil, err
-		}
-		info.Tables = append(info.Tables, t)
-		tableData = remainder
+	tables, err := smbios.ParseTables(bytes.NewReader(tableData))
+	if err != nil {
+		return nil, err
 	}
+	info.Tables = tables
 	return info, nil
 }
 

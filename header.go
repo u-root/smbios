@@ -8,7 +8,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 )
+
+const headerLen = 4
 
 // Header is the header common to all table types.
 type Header struct {
@@ -18,8 +21,15 @@ type Header struct {
 }
 
 // Parse parses the header from the binary data.
-func (h *Header) Parse(data []byte) error {
-	return binary.Read(bytes.NewReader(data), binary.LittleEndian, h)
+func (h *Header) Parse(r io.Reader) error {
+	return binary.Read(io.LimitReader(r, headerLen), binary.LittleEndian, h)
+}
+
+// ToBytes returns the header as bytes.
+func (h *Header) ToBytes() []byte {
+	var b bytes.Buffer
+	_ = binary.Write(&b, binary.LittleEndian, h)
+	return b.Bytes()
 }
 
 // String returns string representation os the header.
