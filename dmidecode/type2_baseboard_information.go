@@ -86,7 +86,7 @@ func (bi *BaseboardInfo) String() string {
 // BoardFeatures is defined in DSP0134 7.3.1.
 type BoardFeatures uint8
 
-// BoardFeatures fields are defined in DSP0134 7.3.1
+// BoardFeatures fields are defined in DSP0134 7.3.1.
 const (
 	BoardFeaturesIsHotSwappable                  BoardFeatures = 1 << 4 // Set to 1 if the board is hot swappable
 	BoardFeaturesIsReplaceable                   BoardFeatures = 1 << 3 // Set to 1 if the board is replaceable

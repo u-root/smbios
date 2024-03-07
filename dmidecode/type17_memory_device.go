@@ -52,6 +52,7 @@ type MemoryDevice struct {
 	LogicalSize                       uint64                              // 4Ch
 }
 
+// MemoryDeviceManufacturer numbers.
 var MemoryDeviceManufacturer = map[string]uint16{
 	"Micron":   0x2C00,
 	"Samsung":  0xCE00,
@@ -359,7 +360,7 @@ func (v MemoryDeviceType) String() string {
 // MemoryDeviceTypeDetail is defined in DSP0134 7.18.3.
 type MemoryDeviceTypeDetail uint16
 
-// MemoryDeviceTypeDetail fields are defined in DSP0134 7.18.3
+// MemoryDeviceTypeDetail fields are defined in DSP0134 7.18.3.
 const (
 	MemoryDeviceTypeDetailOther                  MemoryDeviceTypeDetail = 1 << 1  // Other
 	MemoryDeviceTypeDetailUnknown                MemoryDeviceTypeDetail = 1 << 2  // Unknown
@@ -464,7 +465,7 @@ func (v MemoryDeviceTechnology) String() string {
 // MemoryDeviceOperatingModeCapability is defined in DSP0134 7.18.7.
 type MemoryDeviceOperatingModeCapability uint16
 
-// MemoryDeviceOperatingModeCapability fields are defined in DSP0134 x.x.x
+// MemoryDeviceOperatingModeCapability fields are defined in DSP0134 ???.
 const (
 	MemoryDeviceOperatingModeCapabilityOther                           MemoryDeviceOperatingModeCapability = 1 << 1 // Other
 	MemoryDeviceOperatingModeCapabilityUnknown                         MemoryDeviceOperatingModeCapability = 1 << 2 // Unknown

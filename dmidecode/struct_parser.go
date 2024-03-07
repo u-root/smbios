@@ -13,7 +13,7 @@ import (
 	"github.com/u-root/smbios"
 )
 
-// We need this for testing
+// We need this for testing.
 type parseStructure func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error)
 
 type fieldParser interface {

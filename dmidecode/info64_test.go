@@ -135,11 +135,11 @@ func FuzzParseInfo(f *testing.F) {
 		}
 
 		var entry []byte
+		//nolint
 		if info.Entry32 != nil {
 			entry, err = info.Entry32.MarshalBinary()
 		} else if info.Entry64 != nil {
 			entry, err = info.Entry64.MarshalBinary()
-
 		} else {
 			t.Fatalf("expected a SMBIOS 32-Bit or 64-Bit entry point but got none")
 		}
