@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
 func TestSystemInfoString(t *testing.T) {
@@ -18,7 +20,7 @@ func TestSystemInfoString(t *testing.T) {
 		{
 			name: "All Infos provided",
 			val: SystemInfo{
-				Table: Table{
+				Table: smbios.Table{
 					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
 						0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf},
 				},
@@ -44,7 +46,7 @@ BIOS Information
 		{
 			name: "UUID not present",
 			val: SystemInfo{
-				Table: Table{
+				Table: smbios.Table{
 					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9},
 				},
 				Manufacturer: "u-root testing",
@@ -67,7 +69,7 @@ BIOS Information
 		{
 			name: "UUID not present",
 			val: SystemInfo{
-				Table: Table{
+				Table: smbios.Table{
 					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9},
 				},
 				Manufacturer: "u-root testing",
@@ -103,12 +105,12 @@ BIOS Information
 func TestUUIDParseField(t *testing.T) {
 	tests := []struct {
 		name string
-		val  Table
+		val  smbios.Table
 		want string
 	}{
 		{
 			name: "Valid UUID",
-			val: Table{
+			val: smbios.Table{
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
 					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03},
 			},
@@ -132,15 +134,15 @@ func TestParseSystemInfo(t *testing.T) {
 	tests := []struct {
 		name  string
 		val   SystemInfo
-		table Table
+		table smbios.Table
 		want  error
 	}{
 		{
 			name: "Invalid Type",
 			val:  SystemInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBIOSInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBIOSInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -152,9 +154,9 @@ func TestParseSystemInfo(t *testing.T) {
 		{
 			name: "Invalid Type",
 			val:  SystemInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeSystemInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeSystemInfo,
 				},
 				Data: []byte{},
 			},
@@ -163,9 +165,9 @@ func TestParseSystemInfo(t *testing.T) {
 		{
 			name: "Parse valid SystemInfo",
 			val:  SystemInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeSystemInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeSystemInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -176,9 +178,9 @@ func TestParseSystemInfo(t *testing.T) {
 		{
 			name: "Parse valid SystemInfo",
 			val:  SystemInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeSystemInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeSystemInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -191,7 +193,7 @@ func TestParseSystemInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *Table, off int, complete bool, sp interface{}) (int, error) {
+			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
 				return 0, tt.want
 			}
 			_, err := parseSystemInfo(parseStruct, &tt.table)

@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // TPMDevice is defined in DSP0134 7.44.
 type TPMDevice struct {
-	Table
+	smbios.Table
 	VendorID         TPMDeviceVendorID        `smbios:"-,skip=4"` // 04h
 	MajorSpecVersion uint8                    // 08h
 	MinorSpecVersion uint8                    // 09h
@@ -25,13 +27,13 @@ type TPMDevice struct {
 	OEMDefined       uint32                   // 1Bh
 }
 
-// NewTPMDevice parses a generic Table into TPMDevice.
-func NewTPMDevice(t *Table) (*TPMDevice, error) {
+// NewTPMDevice parses a generic smbios.Table into TPMDevice.
+func NewTPMDevice(t *smbios.Table) (*TPMDevice, error) {
 	return newTPMDevice(parseStruct, t)
 }
 
-func newTPMDevice(parseFn parseStructure, t *Table) (*TPMDevice, error) {
-	if t.Type != TableTypeTPMDevice {
+func newTPMDevice(parseFn parseStructure, t *smbios.Table) (*TPMDevice, error) {
+	if t.Type != smbios.TableTypeTPMDevice {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x1f {

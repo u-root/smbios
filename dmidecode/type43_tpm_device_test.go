@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
 func TestTPMDeviceString(t *testing.T) {
@@ -121,15 +123,15 @@ func TestNewTPMDevice(t *testing.T) {
 	tests := []struct {
 		name  string
 		val   TPMDevice
-		table Table
+		table smbios.Table
 		want  error
 	}{
 		{
 			name: "Invalid Type",
 			val:  TPMDevice{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBIOSInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBIOSInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -141,9 +143,9 @@ func TestNewTPMDevice(t *testing.T) {
 		{
 			name: "Required fields are missing",
 			val:  TPMDevice{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeTPMDevice,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeTPMDevice,
 				},
 				Data: []byte{},
 			},
@@ -152,9 +154,9 @@ func TestNewTPMDevice(t *testing.T) {
 		{
 			name: "Error parsing structure",
 			val:  TPMDevice{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeTPMDevice,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeTPMDevice,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -167,9 +169,9 @@ func TestNewTPMDevice(t *testing.T) {
 		{
 			name: "Parse valid TPMDevice",
 			val:  TPMDevice{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeTPMDevice,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeTPMDevice,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -183,7 +185,7 @@ func TestNewTPMDevice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *Table, off int, complete bool, sp interface{}) (int, error) {
+			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
 				return 0, tt.want
 			}
 			_, err := newTPMDevice(parseStruct, &tt.table)

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"bytes"
@@ -10,13 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // ChassisInfo is defined in DSP0134 7.4.
 type ChassisInfo struct {
-	Table
+	smbios.Table
 	Manufacturer                  string                    // 04h
 	Type                          ChassisType               // 05h
 	Version                       string                    // 06h
@@ -42,13 +44,13 @@ type ChassisContainedElement struct {
 	Max  uint8              // 02h
 }
 
-// ParseChassisInfo parses a generic Table into ChassisInfo.
-func ParseChassisInfo(t *Table) (*ChassisInfo, error) {
+// ParseChassisInfo parses a generic smbios.Table into ChassisInfo.
+func ParseChassisInfo(t *smbios.Table) (*ChassisInfo, error) {
 	return parseChassisInfo(parseStruct, t)
 }
 
-func parseChassisInfo(parseFn parseStructure, t *Table) (*ChassisInfo, error) {
-	if t.Type != TableTypeChassisInfo {
+func parseChassisInfo(parseFn parseStructure, t *smbios.Table) (*ChassisInfo, error) {
+	if t.Type != smbios.TableTypeChassisInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x9 {
@@ -311,7 +313,7 @@ type ChassisElementType uint8
 
 func (v ChassisElementType) String() string {
 	if v&0x80 != 0 {
-		return TableType(v & 0x7f).String()
+		return smbios.TableType(v & 0x7f).String()
 	}
 	return BoardType(v & 0x7f).String()
 }

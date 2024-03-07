@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // BaseboardInfo is defined in DSP0134 7.3.
 type BaseboardInfo struct {
-	Table
+	smbios.Table
 	Manufacturer                   string        // 04h
 	Product                        string        // 05h
 	Version                        string        // 06h
@@ -28,13 +30,13 @@ type BaseboardInfo struct {
 	ContainedObjectHandles         []uint16      `smbios:"-"` // 0Fh
 }
 
-// ParseBaseboardInfo parses a generic Table into BaseboardInfo.
-func ParseBaseboardInfo(t *Table) (*BaseboardInfo, error) {
+// ParseBaseboardInfo parses a generic smbios.Table into BaseboardInfo.
+func ParseBaseboardInfo(t *smbios.Table) (*BaseboardInfo, error) {
 	return parseBaseboardInfo(parseStruct, t)
 }
 
-func parseBaseboardInfo(parseFn parseStructure, t *Table) (*BaseboardInfo, error) {
-	if t.Type != TableTypeBaseboardInfo {
+func parseBaseboardInfo(parseFn parseStructure, t *smbios.Table) (*BaseboardInfo, error) {
+	if t.Type != smbios.TableTypeBaseboardInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	// Defined in DSP0134 7.3, length of the structure is at least 08h.

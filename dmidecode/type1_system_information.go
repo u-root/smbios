@@ -2,20 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // SystemInfo is defined in DSP0134 7.2.
 type SystemInfo struct {
-	Table
+	smbios.Table
 	Manufacturer string     // 04h
 	ProductName  string     // 05h
 	Version      string     // 06h
@@ -27,12 +29,12 @@ type SystemInfo struct {
 }
 
 // ParseSystemInfo parses a generic Table into SystemInfo.
-func ParseSystemInfo(t *Table) (*SystemInfo, error) {
+func ParseSystemInfo(t *smbios.Table) (*SystemInfo, error) {
 	return parseSystemInfo(parseStruct, t)
 }
 
-func parseSystemInfo(parseFn parseStructure, t *Table) (*SystemInfo, error) {
-	if t.Type != TableTypeSystemInfo {
+func parseSystemInfo(parseFn parseStructure, t *smbios.Table) (*SystemInfo, error) {
+	if t.Type != smbios.TableTypeSystemInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 8 {
@@ -46,7 +48,7 @@ func parseSystemInfo(parseFn parseStructure, t *Table) (*SystemInfo, error) {
 }
 
 // ParseField parses UUD field within a table.
-func (u *UUID) ParseField(t *Table, off int) (int, error) {
+func (u *UUID) ParseField(t *smbios.Table, off int) (int, error) {
 	ub, err := t.GetBytesAt(off, 16)
 	if err != nil {
 		return off, err

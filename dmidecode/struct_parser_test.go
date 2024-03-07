@@ -2,17 +2,30 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
+func checkError(got error, want error) bool {
+	if got != nil && want != nil {
+		if got.Error() == want.Error() {
+			return true
+		}
+	}
+
+	return errors.Is(got, want)
+}
+
 type UnknownTypes struct {
-	Table
+	smbios.Table
 	SupportedField   uint64
 	UnsupportedField float32
 }
@@ -28,7 +41,7 @@ func TestParseStructUnsupported(t *testing.T) {
 
 	want := "unsupported type float32"
 
-	table := Table{
+	table := smbios.Table{
 		Data: buffer,
 	}
 
@@ -54,7 +67,7 @@ func TestParseStructSupported(t *testing.T) {
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 	}
 
-	table := Table{
+	table := smbios.Table{
 		Data: buffer,
 	}
 
@@ -141,7 +154,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			table := Table{
+			table := smbios.Table{
 				Data:    tt.buffer,
 				Strings: tt.strings,
 			}
@@ -150,9 +163,9 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			}
 
 			// We need to modify tt.want with runtime data
-			tt.want.Table = Table{
-				Header: Header{
-					Type:   TableType(tt.buffer[0]),
+			tt.want.Table = smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableType(tt.buffer[0]),
 					Length: tt.buffer[1],
 					Handle: binary.BigEndian.Uint16([]byte{tt.buffer[3], tt.buffer[2]}),
 				},

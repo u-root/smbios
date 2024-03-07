@@ -41,44 +41,6 @@ func TestParseSMBIOS(t *testing.T) {
 	}
 }
 
-func Test64Len(t *testing.T) {
-	info, err := setupMockData()
-
-	if err != nil {
-		t.Errorf("error parsing info Data: %v", err)
-	}
-
-	if info.Tables != nil {
-		if info.Tables[0].Len() != 14 {
-			t.Errorf("Wrong length: Got %d want %d", info.Tables[0].Len(), 14)
-		}
-	}
-}
-
-func Test64String(t *testing.T) {
-
-	tableString := `Handle 0x0000, DMI type 222, 14 bytes
-OEM-specific Type
-	Header and Data:
-		DE 0E 00 00 01 99 00 03 10 01 20 02 30 03
-	Strings:
-		Memory Init Complete
-		End of DXE Phase
-		BIOS Boot Complete`
-
-	info, err := setupMockData()
-
-	if err != nil {
-		t.Errorf("error parsing info Data: %v", err)
-	}
-
-	if info.Tables != nil {
-		if info.Tables[0].String() != tableString {
-			t.Errorf("Wrong length: Got %s want %s", info.Tables[0].String(), tableString)
-		}
-	}
-}
-
 func Test64GetByteAt(t *testing.T) {
 	testStruct := Table{
 		Header: Header{
@@ -325,49 +287,6 @@ func Test64GetQWordAt(t *testing.T) {
 			}
 			if !reflect.DeepEqual(resultBytes, tt.expectedBytes) && err == nil {
 				t.Errorf("GetBytesAt(): Wrong byte size, %x, want %x", resultBytes, tt.expectedBytes)
-			}
-		})
-	}
-}
-
-func TestKmgt(t *testing.T) {
-
-	tests := []struct {
-		name   string
-		value  uint64
-		expect string
-	}{
-		{
-			name:   "Just bytes",
-			value:  512,
-			expect: "512 bytes",
-		},
-		{
-			name:   "Two Kb",
-			value:  2 * 1024,
-			expect: "2 kB",
-		},
-		{
-			name:   "512 MB",
-			value:  512 * 1024 * 1024,
-			expect: "512 MB",
-		},
-		{
-			name:   "8 GB",
-			value:  8 * 1024 * 1024 * 1024,
-			expect: "8 GB",
-		},
-		{
-			name:   "3 TB",
-			value:  3 * 1024 * 1024 * 1024 * 1024,
-			expect: "3 TB",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if kmgt(tt.value) != tt.expect {
-				t.Errorf("kgmt(): %v - want '%v'", kmgt(tt.value), tt.expect)
 			}
 		})
 	}

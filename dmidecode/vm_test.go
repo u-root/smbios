@@ -5,7 +5,7 @@
 //go:build !race
 // +build !race
 
-package smbios
+package dmidecode
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestIntegration(t *testing.T) {
 	qemu.SkipIfNotArch(t, qemu.ArchAMD64)
 
 	govmtest.Run(t, "vm",
-		govmtest.WithPackageToTest("github.com/u-root/u-root/pkg/smbios"),
+		govmtest.WithPackageToTest("github.com/u-root/u-root/pkg/smbios/dmidecode"),
 		govmtest.WithQEMUFn(
 			qemu.WithVMTimeout(time.Minute),
 			qemu.ArbitraryArgs("-smbios", "type=2,manufacturer=u-root"),

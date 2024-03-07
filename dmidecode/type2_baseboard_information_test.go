@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
 func TestBoardTypeString(t *testing.T) {
@@ -182,15 +184,15 @@ func TestParseBaseboardInfo(t *testing.T) {
 	tests := []struct {
 		name  string
 		val   BaseboardInfo
-		table Table
+		table smbios.Table
 		want  error
 	}{
 		{
 			name: "Invalid Type",
 			val:  BaseboardInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBIOSInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBIOSInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -202,9 +204,9 @@ func TestParseBaseboardInfo(t *testing.T) {
 		{
 			name: "Required fields are missing",
 			val:  BaseboardInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBaseboardInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
 				},
 				Data: []byte{},
 			},
@@ -213,9 +215,9 @@ func TestParseBaseboardInfo(t *testing.T) {
 		{
 			name: "Error parsing structure",
 			val:  BaseboardInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBaseboardInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -229,9 +231,9 @@ func TestParseBaseboardInfo(t *testing.T) {
 			val: BaseboardInfo{
 				NumberOfContainedObjectHandles: 2,
 			},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBaseboardInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -243,7 +245,7 @@ func TestParseBaseboardInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *Table, off int, complete bool, sp interface{}) (int, error) {
+			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
 				return 0, tt.want
 			}
 			_, err := parseBaseboardInfo(parseStruct, &tt.table)

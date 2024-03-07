@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
 func Test64ParseInfo(t *testing.T) {
@@ -75,13 +77,13 @@ func Test64GetTablesByType(t *testing.T) {
 		t.Errorf("error parsing info data: %v", err)
 	}
 
-	table := info.GetTablesByType(TableTypeBIOSInfo)
+	table := info.GetTablesByType(smbios.TableTypeBIOSInfo)
 	if table == nil {
 		t.Errorf("unable to get type")
 	}
 	if table != nil {
-		if table[0].Header.Type != TableTypeBIOSInfo {
-			t.Errorf("Wrong type. Got %v but want %v", TableTypeBIOSInfo, table[0].Header.Type)
+		if table[0].Header.Type != smbios.TableTypeBIOSInfo {
+			t.Errorf("Wrong type. Got %v but want %v", smbios.TableTypeBIOSInfo, table[0].Header.Type)
 		}
 	}
 }
@@ -154,4 +156,85 @@ func FuzzParseInfo(f *testing.F) {
 			t.Errorf("expected: %#v\ngot:%#v", info, reparsedInfo)
 		}
 	})
+}
+
+func Test64Len(t *testing.T) {
+	info, err := setupMockData()
+
+	if err != nil {
+		t.Errorf("error parsing info Data: %v", err)
+	}
+
+	if info.Tables != nil {
+		if info.Tables[0].Len() != 14 {
+			t.Errorf("Wrong length: Got %d want %d", info.Tables[0].Len(), 14)
+		}
+	}
+}
+
+func Test64String(t *testing.T) {
+
+	tableString := `Handle 0x0000, DMI type 222, 14 bytes
+OEM-specific Type
+	Header and Data:
+		DE 0E 00 00 01 99 00 03 10 01 20 02 30 03
+	Strings:
+		Memory Init Complete
+		End of DXE Phase
+		BIOS Boot Complete`
+
+	info, err := setupMockData()
+
+	if err != nil {
+		t.Errorf("error parsing info Data: %v", err)
+	}
+
+	if info.Tables != nil {
+		if info.Tables[0].String() != tableString {
+			t.Errorf("Wrong length: Got %s want %s", info.Tables[0].String(), tableString)
+		}
+	}
+}
+
+func TestKmgt(t *testing.T) {
+
+	tests := []struct {
+		name   string
+		value  uint64
+		expect string
+	}{
+		{
+			name:   "Just bytes",
+			value:  512,
+			expect: "512 bytes",
+		},
+		{
+			name:   "Two Kb",
+			value:  2 * 1024,
+			expect: "2 kB",
+		},
+		{
+			name:   "512 MB",
+			value:  512 * 1024 * 1024,
+			expect: "512 MB",
+		},
+		{
+			name:   "8 GB",
+			value:  8 * 1024 * 1024 * 1024,
+			expect: "8 GB",
+		},
+		{
+			name:   "3 TB",
+			value:  3 * 1024 * 1024 * 1024 * 1024,
+			expect: "3 TB",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if kmgt(tt.value) != tt.expect {
+				t.Errorf("kgmt(): %v - want '%v'", kmgt(tt.value), tt.expect)
+			}
+		})
+	}
 }

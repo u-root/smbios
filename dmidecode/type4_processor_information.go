@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // ProcessorInfo is defined in DSP0134 x.x.
 type ProcessorInfo struct {
-	Table
+	smbios.Table
 	SocketDesignation string                   // 04h
 	Type              ProcessorType            // 05h
 	Family            uint8                    // 06h
@@ -43,13 +45,13 @@ type ProcessorInfo struct {
 	ThreadCount2      uint16                   // 2Eh
 }
 
-// ParseProcessorInfo parses a generic Table into ProcessorInfo.
-func ParseProcessorInfo(t *Table) (*ProcessorInfo, error) {
+// ParseProcessorInfo parses a generic smbios.Table into ProcessorInfo.
+func ParseProcessorInfo(t *smbios.Table) (*ProcessorInfo, error) {
 	return parseProcessorInfo(parseStruct, t)
 }
 
-func parseProcessorInfo(parseFn parseStructure, t *Table) (*ProcessorInfo, error) {
-	if t.Type != TableTypeProcessorInfo {
+func parseProcessorInfo(parseFn parseStructure, t *smbios.Table) (*ProcessorInfo, error) {
+	if t.Type != smbios.TableTypeProcessorInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x1a {

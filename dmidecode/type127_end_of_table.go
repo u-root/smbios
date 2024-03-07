@@ -2,20 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
+
+	"github.com/u-root/smbios"
 )
 
 // EndOfTable is Defined in DSP0134 7.46.
 type EndOfTable struct {
-	Table
+	smbios.Table
 }
 
 // NewEndOfTable parses a generic Table into EndOfTable.
-func NewEndOfTable(t *Table) (*EndOfTable, error) {
-	if t.Type != TableTypeEndOfTable {
+func NewEndOfTable(t *smbios.Table) (*EndOfTable, error) {
+	if t.Type != smbios.TableTypeEndOfTable {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	return &EndOfTable{Table: *t}, nil

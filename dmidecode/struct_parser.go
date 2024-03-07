@@ -2,17 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
+// We need this for testing
+type parseStructure func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error)
+
 type fieldParser interface {
-	ParseField(t *Table, off int) (int, error)
+	ParseField(t *smbios.Table, off int) (int, error)
 }
 
 var (
@@ -20,7 +25,7 @@ var (
 	fieldParserInterfaceType = reflect.TypeOf((*fieldParser)(nil)).Elem()
 )
 
-func parseStruct(t *Table, off int, complete bool, sp interface{}) (int, error) {
+func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
 	var err error
 	var ok bool
 	var sv reflect.Value

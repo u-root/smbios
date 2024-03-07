@@ -25,16 +25,9 @@ var (
 	// ErrTableNotFound is retuned if table with specified type is not found.
 	ErrTableNotFound = errors.New("table not found")
 
-	// ErrUnsupportedTableType is returned by ParseTypedTable if this table type is not supported and cannot be parsed.
-	ErrUnsupportedTableType = errors.New("unsupported table type")
-
 	ErrEndOfTable = errors.New("end of table")
 
 	tableSep = []byte{0, 0}
-)
-
-const (
-	outOfSpec = "<OUT OF SPEC>"
 )
 
 // Len returns length of the structured part of the table.
@@ -169,19 +162,4 @@ func ParseTable(data []byte) (*Table, []byte, error) {
 		err = ErrEndOfTable
 	}
 	return &Table{Header: h, Data: structData, Strings: strings}, data, err
-}
-
-func kmgt(v uint64) string {
-	switch {
-	case v >= 1024*1024*1024*1024 && v%(1024*1024*1024*1024) == 0:
-		return fmt.Sprintf("%d TB", v/(1024*1024*1024*1024))
-	case v >= 1024*1024*1024 && v%(1024*1024*1024) == 0:
-		return fmt.Sprintf("%d GB", v/(1024*1024*1024))
-	case v >= 1024*1024 && v%(1024*1024) == 0:
-		return fmt.Sprintf("%d MB", v/(1024*1024))
-	case v >= 1024 && v%1024 == 0:
-		return fmt.Sprintf("%d kB", v/1024)
-	default:
-		return fmt.Sprintf("%d bytes", v)
-	}
 }

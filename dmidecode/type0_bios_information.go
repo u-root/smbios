@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // BIOSInfo is Defined in DSP0134 7.1.
 type BIOSInfo struct {
-	Table
+	smbios.Table
 	Vendor                                 string                  // 04h
 	Version                                string                  // 05h
 	StartingAddressSegment                 uint16                  // 06h
@@ -31,12 +33,12 @@ type BIOSInfo struct {
 }
 
 // ParseBIOSInfo parses a generic Table into BIOSInfo.
-func ParseBIOSInfo(t *Table) (*BIOSInfo, error) {
+func ParseBIOSInfo(t *smbios.Table) (*BIOSInfo, error) {
 	return parseBIOSInfo(parseStruct, t)
 }
 
-func parseBIOSInfo(parsingFunction parseStructure, t *Table) (*BIOSInfo, error) {
-	if t.Type != TableTypeBIOSInfo {
+func parseBIOSInfo(parsingFunction parseStructure, t *smbios.Table) (*BIOSInfo, error) {
+	if t.Type != smbios.TableTypeBIOSInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x12 {

@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // MemoryDevice is defined in DSP0134 7.18.
 type MemoryDevice struct {
-	Table
+	smbios.Table
 	PhysicalMemoryArrayHandle         uint16                              // 04h
 	MemoryErrorInfoHandle             uint16                              // 06h
 	TotalWidth                        uint16                              // 08h
@@ -72,9 +74,9 @@ var MemoryDeviceManufacturer = map[string]uint16{
 	"Viking":   0x4001,
 }
 
-// NewMemoryDevice parses a generic Table into MemoryDevice.
-func NewMemoryDevice(t *Table) (*MemoryDevice, error) {
-	if t.Type != TableTypeMemoryDevice {
+// NewMemoryDevice parses a generic smbios.Table into MemoryDevice.
+func NewMemoryDevice(t *smbios.Table) (*MemoryDevice, error) {
+	if t.Type != smbios.TableTypeMemoryDevice {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x15 {

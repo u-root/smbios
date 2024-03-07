@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // CacheInfo is defined in DSP0134 7.8.
 type CacheInfo struct {
-	Table
+	smbios.Table
 	SocketDesignation   string                   // 04h
 	Configuration       uint16                   // 05h
 	MaximumSize         uint16                   // 07h
@@ -29,13 +31,13 @@ type CacheInfo struct {
 	InstalledSize2      uint32                   // 17h
 }
 
-// ParseCacheInfo parses a generic Table into CacheInfo.
-func ParseCacheInfo(t *Table) (*CacheInfo, error) {
+// ParseCacheInfo parses a generic smbios.Table into CacheInfo.
+func ParseCacheInfo(t *smbios.Table) (*CacheInfo, error) {
 	return parseCacheInfo(parseStruct, t)
 }
 
-func parseCacheInfo(parseFn parseStructure, t *Table) (*CacheInfo, error) {
-	if t.Type != TableTypeCacheInfo {
+func parseCacheInfo(parseFn parseStructure, t *smbios.Table) (*CacheInfo, error) {
+	if t.Type != smbios.TableTypeCacheInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0xf {

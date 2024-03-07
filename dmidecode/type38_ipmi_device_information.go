@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/u-root/smbios"
 )
 
 // Much of this is auto-generated. If adding a new type, see README for instructions.
 
 // IPMIDeviceInfo is defined in DSP0134 7.39.
 type IPMIDeviceInfo struct {
-	Table
+	smbios.Table
 	InterfaceType                    BMCInterfaceType // 04h
 	IPMISpecificationRevision        uint8            // 05h
 	I2CSlaveAddress                  uint8            // 06h
@@ -24,9 +26,9 @@ type IPMIDeviceInfo struct {
 	InterruptNumber                  uint8            // 11h
 }
 
-// ParseIPMIDeviceInfo parses a generic Table into IPMIDeviceInfo.
-func ParseIPMIDeviceInfo(t *Table) (*IPMIDeviceInfo, error) {
-	if t.Type != TableTypeIPMIDeviceInfo {
+// ParseIPMIDeviceInfo parses a generic smbios.Table into IPMIDeviceInfo.
+func ParseIPMIDeviceInfo(t *smbios.Table) (*IPMIDeviceInfo, error) {
+	if t.Type != smbios.TableTypeIPMIDeviceInfo {
 		return nil, fmt.Errorf("invalid table type %d", t.Type)
 	}
 	if t.Len() < 0x12 {

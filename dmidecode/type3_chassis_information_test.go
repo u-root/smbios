@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package smbios
+package dmidecode
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/u-root/smbios"
 )
 
 func TestChassisInfoString(t *testing.T) {
@@ -18,7 +20,7 @@ func TestChassisInfoString(t *testing.T) {
 		{
 			name: "Full Information",
 			val: ChassisInfo{
-				Table: Table{
+				Table: smbios.Table{
 					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
 						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
 				},
@@ -72,7 +74,7 @@ BIOS Information
 		}, {
 			name: "Minimal Information",
 			val: ChassisInfo{
-				Table: Table{
+				Table: smbios.Table{
 					Data: []byte{},
 				},
 				Manufacturer:   "The Ancients",
@@ -156,15 +158,15 @@ func TestParseChassisInfo(t *testing.T) {
 	tests := []struct {
 		name  string
 		val   *ChassisInfo
-		table Table
+		table smbios.Table
 		want  error
 	}{
 		{
 			name: "Invalid Type",
 			val:  &ChassisInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeBIOSInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBIOSInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -176,9 +178,9 @@ func TestParseChassisInfo(t *testing.T) {
 		{
 			name: "Required fields are missing",
 			val:  &ChassisInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeChassisInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
 				},
 				Data: []byte{},
 			},
@@ -187,9 +189,9 @@ func TestParseChassisInfo(t *testing.T) {
 		{
 			name: "Error parsing structure",
 			val:  &ChassisInfo{},
-			table: Table{
-				Header: Header{
-					Type: TableTypeChassisInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -201,9 +203,9 @@ func TestParseChassisInfo(t *testing.T) {
 		{
 			name: "Parse valid SystemInfo",
 			val: &ChassisInfo{
-				Table: Table{
-					Header: Header{
-						Type: TableTypeChassisInfo,
+				Table: smbios.Table{
+					Header: smbios.Header{
+						Type: smbios.TableTypeChassisInfo,
 					},
 					Data: []byte{0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
 						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -216,9 +218,9 @@ func TestParseChassisInfo(t *testing.T) {
 				ContainedElementCount:         7,
 				ContainedElementsRecordLength: 0x10,
 			},
-			table: Table{
-				Header: Header{
-					Type: TableTypeChassisInfo,
+			table: smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
 				},
 				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -231,7 +233,7 @@ func TestParseChassisInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *Table, off int, complete bool, sp interface{}) (int, error) {
+			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
 				return len(tt.val.Data), tt.want
 			}
 			_, err := parseChassisInfo(parseStruct, &tt.table)
