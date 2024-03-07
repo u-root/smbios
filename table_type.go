@@ -24,36 +24,27 @@ const (
 	TableTypeEndOfTable     TableType = 127
 )
 
+var tableTypeToString = map[TableType]string{
+	TableTypeBIOSInfo:       "BIOS Information",
+	TableTypeSystemInfo:     "System Information",
+	TableTypeBaseboardInfo:  "Base Board Information",
+	TableTypeChassisInfo:    "Chassis Information",
+	TableTypeProcessorInfo:  "Processor Information",
+	TableTypeCacheInfo:      "Cache Information",
+	TableTypeSystemSlots:    "System Slots",
+	TableTypeMemoryDevice:   "Memory Device",
+	TableTypeIPMIDeviceInfo: "IPMI Device Information",
+	TableTypeTPMDevice:      "TPM Device",
+	TableTypeInactive:       "Inactive",
+	TableTypeEndOfTable:     "End Of Table",
+}
+
 func (t TableType) String() string {
-	switch t {
-	case TableTypeBIOSInfo:
-		return "BIOS Information"
-	case TableTypeSystemInfo:
-		return "System Information"
-	case TableTypeBaseboardInfo:
-		return "Base Board Information"
-	case TableTypeChassisInfo:
-		return "Chassis Information"
-	case TableTypeProcessorInfo:
-		return "Processor Information"
-	case TableTypeCacheInfo:
-		return "Cache Information"
-	case TableTypeSystemSlots:
-		return "System Slots"
-	case TableTypeMemoryDevice:
-		return "Memory Device"
-	case TableTypeIPMIDeviceInfo:
-		return "IPMI Device Information"
-	case TableTypeTPMDevice:
-		return "TPM Device"
-	case TableTypeInactive:
-		return "Inactive"
-	case TableTypeEndOfTable:
-		return "End Of Table"
-	default:
-		if t >= 0x80 {
-			return "OEM-specific Type"
-		}
-		return "Unsupported"
+	if s, ok := tableTypeToString[t]; ok {
+		return s
 	}
+	if t >= 0x80 {
+		return "OEM-specific Type"
+	}
+	return "Unsupported"
 }
