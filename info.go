@@ -46,10 +46,10 @@ func ParseInfo(entryData, tableData []byte) (*Info, error) {
 // MajorVersion return major version of the SMBIOS spec.
 func (i *Info) MajorVersion() uint8 {
 	if i.Entry64 != nil {
-		return i.Entry64.SMBIOSMajorVersion
+		return i.Entry64.MajorVersion
 	}
 	if i.Entry32 != nil {
-		return i.Entry32.SMBIOSMajorVersion
+		return i.Entry32.MajorVersion
 	}
 	return 0
 }
@@ -57,10 +57,10 @@ func (i *Info) MajorVersion() uint8 {
 // MinorVersion return minor version of the SMBIOS spec.
 func (i *Info) MinorVersion() uint8 {
 	if i.Entry64 != nil {
-		return i.Entry64.SMBIOSMinorVersion
+		return i.Entry64.MinorVersion
 	}
 	if i.Entry32 != nil {
-		return i.Entry32.SMBIOSMinorVersion
+		return i.Entry32.MinorVersion
 	}
 	return 0
 }
@@ -68,7 +68,7 @@ func (i *Info) MinorVersion() uint8 {
 // DocRev return document revision of the SMBIOS spec.
 func (i *Info) DocRev() uint8 {
 	if i.Entry64 != nil {
-		return i.Entry64.SMBIOSDocRev
+		return i.Entry64.DocRev
 	}
 	return 0
 }

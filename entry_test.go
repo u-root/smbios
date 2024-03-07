@@ -7,20 +7,20 @@ import "testing"
 
 var (
 	validEntry32 = Entry32{
-		Anchor:             [4]byte{95, 83, 77, 95},
-		Checksum:           0x73,
-		Length:             0x1F,
-		SMBIOSMajorVersion: 0x01,
-		SMBIOSMinorVersion: 0x01,
-		StructMaxSize:      0x000E,
-		Revision:           0x00,
-		Reserved:           [5]byte{0x00, 0x00, 0x00, 0x00, 0x00},
-		IntAnchor:          [5]byte{95, 68, 77, 73, 95},
-		IntChecksum:        0x68,
-		StructTableLength:  0x0000,
-		StructTableAddr:    0x00000000,
-		NumberOfStructs:    0x0000,
-		BCDRevision:        0x00,
+		Anchor:            [4]byte{95, 83, 77, 95},
+		Checksum:          0x73,
+		Length:            0x1F,
+		MajorVersion:      0x01,
+		MinorVersion:      0x01,
+		StructMaxSize:     0x000E,
+		Revision:          0x00,
+		Reserved:          [5]byte{0x00, 0x00, 0x00, 0x00, 0x00},
+		IntAnchor:         [5]byte{95, 68, 77, 73, 95},
+		IntChecksum:       0x68,
+		StructTableLength: 0x0000,
+		StructTableAddr:   0x00000000,
+		NumberOfStructs:   0x0000,
+		BCDRevision:       0x00,
 	}
 )
 
@@ -66,16 +66,16 @@ func TestEntry32Unmarshall(t *testing.T) {
 
 var (
 	validEntry64 = Entry64{
-		Anchor:             [5]byte{95, 83, 77, 51, 95},
-		Checksum:           0x5F,
-		Length:             0x18,
-		SMBIOSMajorVersion: 0x02,
-		SMBIOSMinorVersion: 0x01,
-		SMBIOSDocRev:       0x01,
-		Revision:           0x00,
-		Reserved:           0x00,
-		StructMaxSize:      0xFFFFFFFF,
-		StructTableAddr:    0xFFFFFFFFFFFFFFFF,
+		Anchor:          [5]byte{95, 83, 77, 51, 95},
+		Checksum:        0x5F,
+		Length:          0x18,
+		MajorVersion:    0x02,
+		MinorVersion:    0x01,
+		DocRev:          0x01,
+		Revision:        0x00,
+		Reserved:        0x00,
+		StructMaxSize:   0xFFFFFFFF,
+		StructTableAddr: 0xFFFFFFFFFFFFFFFF,
 	}
 )
 
