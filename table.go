@@ -21,14 +21,13 @@ type Table struct {
 	Strings []string `smbios:"-"` // Strings section.
 }
 
+// Table parsing errors.
 var (
-	// ErrTableNotFound is retuned if table with specified type is not found.
 	ErrTableNotFound = errors.New("table not found")
-
-	ErrEndOfTable = errors.New("end of table")
-
-	tableSep = []byte{0, 0}
+	ErrEndOfTable    = errors.New("end of table")
 )
+
+var tableSep = []byte{0, 0}
 
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {

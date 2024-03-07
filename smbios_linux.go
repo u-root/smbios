@@ -15,8 +15,8 @@ import (
 
 var systabPath = "/sys/firmware/efi/systab"
 
-// SMBIOSBaseEFI finds the SMBIOS entry point address in the EFI System Table.
-func SMBIOSBaseEFI() (base int64, size int64, err error) {
+// BaseEFI finds the SMBIOS entry point address in the EFI System Table.
+func BaseEFI() (base int64, size int64, err error) {
 	file, err := os.Open(systabPath)
 	if err != nil {
 		return 0, 0, err

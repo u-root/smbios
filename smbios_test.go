@@ -11,9 +11,9 @@ import (
 	"github.com/u-root/u-root/pkg/memio"
 )
 
-func TestSMBIOSBaseEFI(t *testing.T) {
+func TestBaseEFI(t *testing.T) {
 	systabPath = "testdata/smbios3_systab"
-	base, _, err := SMBIOSBase()
+	base, _, err := Base()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,11 +21,11 @@ func TestSMBIOSBaseEFI(t *testing.T) {
 	var want int64 = 0x12345678
 
 	if base != want {
-		t.Errorf("SMBIOSBase(): 0x%x, want 0x%x", base, want)
+		t.Errorf("Base(): 0x%x, want 0x%x", base, want)
 	}
 }
 
-func TestSMBIOSBaseLegacy(t *testing.T) {
+func TestBaseLegacy(t *testing.T) {
 	tmpBuf = []byte{0, '_', 'M', 'S', '_', 0, 0, '_', 'S', 'M', '_', 0, 0, 0, 0, 0}
 	systabPath = "testdata/systab_NOT_FOUND"
 	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
@@ -41,7 +41,7 @@ func TestSMBIOSBaseLegacy(t *testing.T) {
 		return nil
 	}
 
-	base, _, err := SMBIOSBase()
+	base, _, err := Base()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,22 +49,22 @@ func TestSMBIOSBaseLegacy(t *testing.T) {
 	var want int64 = 0xf0007
 
 	if base != want {
-		t.Errorf("SMBIOSBase(): 0x%x, want 0x%x", base, want)
+		t.Errorf("Base(): 0x%x, want 0x%x", base, want)
 	}
 }
 
-func TestSMBIOSBaseNotFound(t *testing.T) {
+func TestBaseNotFound(t *testing.T) {
 	systabPath = "testdata/systab_NOT_FOUND"
 	defer func(old func(base int64, uintn memio.UintN) error) { memioRead = old }(memioRead)
 	memioRead = func(base int64, uintn memio.UintN) error {
 		return nil
 	}
 
-	_, _, err := SMBIOSBase()
+	_, _, err := Base()
 
 	want := "could not find _SM_ or _SM3_ via /dev/mem from 0x000f0000 to 0x00100000"
 
 	if err.Error() != want {
-		t.Errorf("SMBIOSBase(): '%v', want %s", err, want)
+		t.Errorf("Base(): '%v', want %s", err, want)
 	}
 }
