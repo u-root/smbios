@@ -118,7 +118,7 @@ func (v BoardFeatures) String() string {
 // BoardType is defined in DSP0134 7.3.2.
 type BoardType uint8
 
-// BoardType values are defined in DSP0134 7.3.2
+// BoardType values are defined in DSP0134 7.3.2.
 const (
 	BoardTypeUnknown                                 BoardType = 0x01 // Unknown
 	BoardTypeOther                                   BoardType = 0x02 // Other

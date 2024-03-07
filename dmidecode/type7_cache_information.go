@@ -140,7 +140,7 @@ func (ci *CacheInfo) String() string {
 // CacheSRAMType is defined in DSP0134 7.8.2.
 type CacheSRAMType uint16
 
-// CacheSRAMType fields are defined in DSP0134 7.8.2
+// CacheSRAMType fields are defined in DSP0134 7.8.2.
 const (
 	CacheSRAMTypeOther         CacheSRAMType = 1 << 0 // Other
 	CacheSRAMTypeUnknown       CacheSRAMType = 1 << 1 // Unknown
