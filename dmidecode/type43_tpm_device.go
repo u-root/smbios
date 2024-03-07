@@ -91,7 +91,7 @@ func (vid TPMDeviceVendorID) String() string {
 // TPMDeviceCharacteristics is defined in DSP0134 7.44.1.
 type TPMDeviceCharacteristics uint8
 
-// TPMDeviceCharacteristics fields are defined in DSP0134 x.x.x
+// TPMDeviceCharacteristics fields are defined in DSP0134 x.x.x.
 const (
 	TPMDeviceCharacteristicsNotSupported                                 TPMDeviceCharacteristics = 1 << 2 // TPM Device Characteristics are not supported.
 	TPMDeviceCharacteristicsFamilyConfigurableViaFirmwareUpdate          TPMDeviceCharacteristics = 1 << 3 // Family configurable via firmware update.

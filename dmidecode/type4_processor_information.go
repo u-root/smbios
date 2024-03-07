@@ -884,7 +884,7 @@ func (v ProcessorUpgrade) String() string {
 // ProcessorCharacteristics values are defined in DSP0134 7.5.9.
 type ProcessorCharacteristics uint16
 
-// ProcessorCharacteristics fields are defined in DSP0134 x.x.x
+// ProcessorCharacteristics fields are defined in DSP0134 x.x.x.
 const (
 	ProcessorCharacteristicsReserved                ProcessorCharacteristics = 1 << 0 // Reserved
 	ProcessorCharacteristicsUnknown                 ProcessorCharacteristics = 1 << 1 // Unknown
