@@ -35,7 +35,7 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 	svtn := sv.Type().Name()
 	// fmt.Printf("t %s\n", svtn)
 	i := 0
-	for ; i < sv.NumField() && off < t.Len(); i++ {
+	for ; i < sv.NumField() && off < len(t.Data); i++ {
 		f := sv.Type().Field(i)
 		fv := sv.Field(i)
 		ft := fv.Type()

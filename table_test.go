@@ -4,8 +4,10 @@
 package smbios
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"testing"
@@ -26,18 +28,245 @@ func checkError(got error, want error) bool {
 }
 
 func TestParseSMBIOS(t *testing.T) {
-	data, err := os.ReadFile(testbinary)
+	f, err := os.Open(testbinary)
 	if err != nil {
 		t.Error(err)
 	}
-	datalen := len(data)
-	readlen := 0
-	for i := 0; datalen > i; i += readlen {
-		_, rest, err := ParseTable(data)
-		if err != nil {
-			t.Error(err)
-		}
-		readlen = datalen - len(rest)
+	if _, err := ParseTables(f); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestParseTable(t *testing.T) {
+	for _, tt := range []struct {
+		b    []byte
+		want *Table
+		err  error
+	}{
+		{
+			b: []byte{
+				0x01,       // type
+				0x01,       // data length
+				0x00, 0x00, // handle
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x10,       // data length
+				0x00, 0x00, // handle
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				'a', // short malformed string
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				'a', 'b', // malformed string
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				0x00, 0x00, // end of strings
+			},
+			want: &Table{
+				Header: Header{
+					Type:   1,
+					Length: 4,
+					Handle: 0,
+				},
+			},
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				'a', 0x00, // string
+				// missing end of strings
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				'a', 0x00, // string
+				0x00, // end of strings
+			},
+			want: &Table{
+				Header: Header{
+					Type:   1,
+					Length: 4,
+					Handle: 0,
+				},
+				Strings: []string{"a"},
+			},
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x0a,       // data length
+				0x00, 0x00, // handle
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // formatted data
+				'a', 0x00, // string
+				'b', 'a', 0x00,
+				0x00, // ambiguous
+				0x00,
+			},
+			want: &Table{
+				Header: Header{
+					Type:   1,
+					Length: 10,
+					Handle: 0,
+				},
+				Data: []byte{
+					0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+				},
+				Strings: []string{
+					"a",
+					"ba",
+				},
+			},
+		},
+		{
+			b:    nil,
+			want: nil,
+			err:  io.ErrUnexpectedEOF,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			got, err := ParseTable(bytes.NewReader(tt.b))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseTable =\n%v, want\n%v", got, tt.want)
+			}
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseTable = %v, want %v", err, tt.err)
+			}
+		})
+	}
+}
+
+func TestParseTables(t *testing.T) {
+	for _, tt := range []struct {
+		b    []byte
+		want []*Table
+		err  error
+	}{
+		{
+			b: []byte{
+				0x01,       // type
+				0x01,       // data length
+				0x00, 0x00, // handle
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				0x00, 0x00, // end of strings
+			},
+			want: []*Table{
+				{
+					Header: Header{
+						Type:   1,
+						Length: 4,
+						Handle: 0,
+					},
+				},
+			},
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x0a,       // data length
+				0x00, 0x00, // handle
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // formatted data
+				'a', 0x00, // string
+				'b', 'a', 0x00,
+				0x00, // ambiguous
+				0x00,
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			b:    nil,
+			want: nil,
+			err:  nil,
+		},
+		{
+			b: []byte{
+				0x01,       // type
+				0x04,       // data length
+				0x00, 0x00, // handle
+				0x00, 0x00, // end of strings
+
+				0x01,       // type
+				0x0a,       // data length
+				0x00, 0x00, // handle
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // formatted data
+				'a', 0x00, // string
+				'b', 'a', 0x00,
+				0x00, // end of strings
+			},
+			want: []*Table{
+				{
+					Header: Header{
+						Type:   1,
+						Length: 4,
+						Handle: 0,
+					},
+				},
+				{
+					Header: Header{
+						Type:   1,
+						Length: 10,
+						Handle: 0,
+					},
+					Data: []byte{1, 2, 3, 4, 5, 6},
+					Strings: []string{
+						"a",
+						"ba",
+					},
+				},
+			},
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			got, err := ParseTables(bytes.NewReader(tt.b))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseTables =\n%v, want\n%v", got, tt.want)
+			}
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseTables = %v, want %v", err, tt.err)
+			}
+		})
 	}
 }
 
@@ -293,7 +522,6 @@ func Test64GetQWordAt(t *testing.T) {
 }
 
 func Test64GetStringAt(t *testing.T) {
-
 	testStruct := Table{
 		Header: Header{
 			Type:   TableTypeBIOSInfo,

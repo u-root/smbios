@@ -5,17 +5,19 @@
 package smbios
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
 // Table is a generic type of table that does not parsed fields,
 // it only allows access to its contents by offset.
 type Table struct {
-	Header
+	Header `smbios:"-"`
 
 	Data    []byte   `smbios:"-"` // Structured part of the table.
 	Strings []string `smbios:"-"` // Strings section.
@@ -24,14 +26,13 @@ type Table struct {
 // Table parsing errors.
 var (
 	ErrTableNotFound = errors.New("table not found")
-	ErrEndOfTable    = errors.New("end of table")
 )
 
 var tableSep = []byte{0, 0}
 
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {
-	return len(t.Data)
+	return len(t.Data) + headerLen
 }
 
 // GetByteAt returns a byte from the structured part at the specified offset.
@@ -99,7 +100,7 @@ func (t *Table) String() string {
 		t.Header.String(),
 		"\tHeader and Data:",
 	}
-	data := t.Data
+	data := append(t.Header.ToBytes(), t.Data...)
 	for len(data) > 0 {
 		ld := data
 		if len(ld) > 16 {
@@ -110,6 +111,7 @@ func (t *Table) String() string {
 			ls[i] = fmt.Sprintf("%02X", d)
 		}
 		lines = append(lines, "\t\t"+strings.Join(ls, " "))
+
 		data = data[len(ld):]
 	}
 	if len(t.Strings) > 0 {
@@ -121,44 +123,104 @@ func (t *Table) String() string {
 	return strings.Join(lines, "\n")
 }
 
+func readFormatted(r io.Reader, l int) ([]byte, error) {
+	if l < 0 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	if l == 0 {
+		return nil, nil
+	}
+	b := make([]byte, l)
+	if _, err := io.ReadFull(r, b); err != nil {
+		// ReadFull returns EOF only if no bytes were read, which is
+		// unexpected here.
+		return nil, convertUnexpectedEOF(err)
+	}
+	return b, nil
+}
+
+func convertUnexpectedEOF(err error) error {
+	if err == io.EOF {
+		return io.ErrUnexpectedEOF
+	}
+	return err
+}
+
+func readStrings(br *bufio.Reader) ([]string, error) {
+	peek, err := br.Peek(2)
+	if err != nil {
+		return nil, convertUnexpectedEOF(err)
+	}
+	if bytes.Equal(peek, []byte{0, 0}) {
+		// If peek worked, this seems impossible to fail.
+		_, _ = br.Discard(2)
+		return nil, nil
+	}
+
+	var s []string
+	for {
+		b, err := br.ReadBytes(0)
+		if err != nil {
+			return nil, convertUnexpectedEOF(err)
+		}
+		b = bytes.TrimRight(b, "\x00")
+		s = append(s, string(b))
+
+		// If the next byte is another \x00, there are no more strings.
+		if peek, err := br.Peek(1); err != nil {
+			return nil, convertUnexpectedEOF(err)
+		} else if bytes.Equal(peek, []byte{0}) {
+			_, _ = br.Discard(1)
+			return s, nil
+		}
+	}
+	// unreachable.
+}
+
+// ParseTables parses all tables from a byte stream.
+func ParseTables(r io.Reader) ([]*Table, error) {
+	br := bufio.NewReader(r)
+	var tt []*Table
+	for {
+		if _, err := br.Peek(1); err == io.EOF {
+			// No more data.
+			return tt, nil
+		}
+		t, err := parseTable(br)
+		if err != nil {
+			return nil, err
+		}
+		tt = append(tt, t)
+	}
+	// Unreachable.
+}
+
 // ParseTable parses a table from byte stream.
-// Returns the parsed table and remaining data.
-func ParseTable(data []byte) (*Table, []byte, error) {
-	var err error
+func ParseTable(r io.Reader) (*Table, error) {
+	br := bufio.NewReader(r)
+	return parseTable(br)
+}
+
+func parseTable(br *bufio.Reader) (*Table, error) {
 	var h Header
-	if err = h.Parse(data); err != nil {
-		return nil, data, err
+	if err := h.Parse(br); err != nil {
+		return nil, convertUnexpectedEOF(err)
 	}
-	if len(data) < int(h.Length)+2 /* string terminator length */ {
-		return nil, data, errors.New("data too short")
+
+	// Length of formatted section is h.Length minus length of header itself.
+	l := int(h.Length) - headerLen
+	f, err := readFormatted(br, l)
+	if err != nil {
+		return nil, fmt.Errorf("reading formatted section: %w", err)
 	}
-	structData := data[:h.Length]
-	data = data[h.Length:]
-	stringData := data
-	var strings []string
-	for len(data) > 0 && err == nil {
-		end := bytes.IndexByte(stringData, 0)
-		if end < 0 {
-			return nil, data, errors.New("unterminated string")
-		}
-		s := string(stringData[:end])
-		stringData = stringData[end+1:]
-		if len(s) > 0 {
-			strings = append(strings, s)
-		}
-		if end == 0 { // End of strings
-			break
-		}
+
+	s, err := readStrings(br)
+	if err != nil {
+		return nil, fmt.Errorf("reading string section: %w", err)
 	}
-	// One would think that next table always follows previous table's strings.
-	// One would be wrong.
-	endOfTableIndex := bytes.Index(data, tableSep)
-	if endOfTableIndex < 0 {
-		return nil, nil, errors.New("end of table not found")
-	}
-	data = data[endOfTableIndex+2:]
-	if h.Type == TableTypeEndOfTable {
-		err = ErrEndOfTable
-	}
-	return &Table{Header: h, Data: structData, Strings: strings}, data, err
+	return &Table{
+		Header:  h,
+		Data:    f,
+		Strings: s,
+	}, nil
 }
