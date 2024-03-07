@@ -52,10 +52,8 @@ func TestParseStructUnsupported(t *testing.T) {
 	off, err := parseStruct(&table, 0, false, UnknownType)
 	if err == nil {
 		t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: %q", off, err, want)
-	} else {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: %q", off, err, want)
-		}
+	} else if !strings.Contains(err.Error(), want) {
+		t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: %q", off, err, want)
 	}
 }
 
@@ -102,7 +100,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 				0x03,       // Minor
 				0x01, 0x00, // FirmwareVersion1
 				0x02, 0x00, // FirmwareVersion1
-				0x00, 0x00, 0x00, 0x00, //FirmwareVersion2
+				0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
 				0x01,                   // String Index
 				1 << 3,                 // Characteristics
 				0x78, 0x56, 0x34, 0x12, // OEMDefined
@@ -132,7 +130,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 				0x03,       // Minor
 				0x01, 0x00, // FirmwareVersion1
 				0x02, 0x00, // FirmwareVersion1
-				0x00, 0x00, 0x00, 0x00, //FirmwareVersion2
+				0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
 				0x01,   // String Index
 				1 << 3, // Characteristics
 			},
