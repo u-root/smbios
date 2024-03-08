@@ -1,12 +1,12 @@
 // Copyright 2016-2021 the u-root Authors. All rights reserved
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package smbios
 
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -16,16 +16,6 @@ import (
 var (
 	testbinary = "testdata/satellite_pro_l70_testdata.bin"
 )
-
-func checkError(got error, want error) bool {
-	if got != nil && want != nil {
-		if got.Error() == want.Error() {
-			return true
-		}
-	}
-
-	return errors.Is(got, want)
-}
 
 func TestParseSMBIOS(t *testing.T) {
 	f, err := os.Open(testbinary)
@@ -274,41 +264,37 @@ func Test64GetByteAt(t *testing.T) {
 	testStruct := Table{
 		Header: Header{
 			Type:   TableTypeBIOSInfo,
-			Length: 16,
+			Length: 20,
 			Handle: 0,
 		},
 		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name         string
-		offset       int
-		expectedByte uint8
-		want         error
+	for _, tt := range []struct {
+		name   string
+		offset int
+		want   uint8
+		err    error
 	}{
 		{
-			name:         "GetByteAt",
-			offset:       0,
-			expectedByte: 1,
-			want:         nil,
+			name:   "GetByteAt",
+			offset: 0,
+			want:   1,
 		},
 		{
-			name:         "GetByteAt Wrong Offset",
-			offset:       213,
-			expectedByte: 0,
-			want:         fmt.Errorf("invalid offset %d", 213),
+			name:   "GetByteAt Wrong Offset",
+			offset: 213,
+			err:    io.ErrUnexpectedEOF,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			resultByte, err := testStruct.GetByteAt(tt.offset)
-			if !checkError(err, tt.want) {
-				t.Errorf("GetByteAt(): '%v', want '%v'", err, tt.want)
+			got, err := testStruct.GetByteAt(tt.offset)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetByteAt = %v, want %v", err, tt.err)
 			}
-			if resultByte != tt.expectedByte {
-				t.Errorf("GetByteAt() = %x, want %x", resultByte, tt.expectedByte)
+			if got != tt.want {
+				t.Errorf("GetByteAt = %x, want %x", got, tt.want)
 			}
 		})
 	}
@@ -325,45 +311,38 @@ func Test64GetBytesAt(t *testing.T) {
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name          string
-		offset        int
-		length        int
-		expectedBytes []byte
-		want          error
+	for _, tt := range []struct {
+		name   string
+		offset int
+		length int
+		want   []byte
+		err    error
 	}{
 		{
-			name:          "Get two bytes",
-			offset:        0,
-			length:        2,
-			expectedBytes: []byte{1, 0},
-			want:          nil,
+			name:   "Get two bytes",
+			offset: 0,
+			length: 2,
+			want:   []byte{1, 0},
 		},
 		{
-			name:          "Wrong Offset",
-			offset:        213,
-			expectedBytes: []byte{},
-			want:          fmt.Errorf("invalid offset 213"),
+			name:   "Wrong Offset",
+			offset: 213,
+			err:    io.ErrUnexpectedEOF,
 		},
 		{
-			name:          "Read out-of-bounds",
-			offset:        7,
-			length:        16,
-			expectedBytes: []byte{},
-			want:          fmt.Errorf("invalid offset 7"),
+			name:   "Read out-of-bounds",
+			offset: 7,
+			length: 16,
+			err:    io.ErrUnexpectedEOF,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-
-			resultBytes, err := testStruct.GetBytesAt(tt.offset, tt.length)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("GetBytesAt(): '%v', want '%v'", err, tt.want)
+			got, err := testStruct.GetBytesAt(tt.offset, tt.length)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetBytesAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(resultBytes, tt.expectedBytes) && err == nil {
-				t.Errorf("GetBytesAt(): Wrong byte size, %x, want %x", resultBytes, tt.expectedBytes)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetBytesAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -376,45 +355,44 @@ func Test64GetWordAt(t *testing.T) {
 			Length: 16,
 			Handle: 0,
 		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 0, 0, 0, 0, 0, 0},
+		Data: []byte{
+			213, 0, 0, 11,
+			12, 0, 0, 0,
+			0, 0, 0, 0,
+		},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name          string
-		offset        int
-		expectedBytes uint16
-		want          error
+	for _, tt := range []struct {
+		name   string
+		offset int
+		want   uint16
+		err    error
 	}{
 		{
-			name:          "Get two bytes",
-			offset:        0,
-			expectedBytes: 1,
-			want:          nil,
+			name:   "Get two bytes",
+			offset: 0,
+			want:   213,
+			err:    nil,
 		},
 		{
-			name:          "Wrong Offset",
-			offset:        213,
-			expectedBytes: 0,
-			want:          fmt.Errorf("invalid offset 213"),
+			name:   "edge case offset",
+			offset: 11,
+			err:    io.ErrUnexpectedEOF,
 		},
 		{
-			name:          "Read position 7",
-			offset:        7,
-			expectedBytes: 0xc0b,
-			want:          nil,
+			name:   "Read position 7",
+			offset: 3,
+			want:   0xc0b,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-
-			resultBytes, err := testStruct.GetWordAt(tt.offset)
-			if !checkError(err, tt.want) {
-				t.Errorf("GetBytesAt(): '%v', want '%v'", err, tt.want)
+			got, err := testStruct.GetWordAt(tt.offset)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(resultBytes, tt.expectedBytes) && err == nil {
-				t.Errorf("GetBytesAt(): Wrong byte size, %x, want %x", resultBytes, tt.expectedBytes)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -424,48 +402,48 @@ func Test64GetDWordAt(t *testing.T) {
 	testStruct := Table{
 		Header: Header{
 			Type:   TableTypeBIOSInfo,
-			Length: 16,
+			Length: 20,
 			Handle: 0,
 		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 0, 0, 0, 0},
+		Data: []byte{
+			1, 0, 0, 0,
+			213, 0, 0, 11,
+			12, 13, 14, 0,
+			0, 0, 0, 0,
+		},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name          string
-		offset        int
-		expectedBytes uint32
-		want          error
+	for _, tt := range []struct {
+		name   string
+		offset int
+		want   uint32
+		err    error
 	}{
 		{
-			name:          "Get two bytes",
-			offset:        0,
-			expectedBytes: 1,
-			want:          nil,
+			name:   "Get two bytes",
+			offset: 0,
+			want:   1,
+			err:    nil,
 		},
 		{
-			name:          "Wrong Offset",
-			offset:        213,
-			expectedBytes: 0,
-			want:          fmt.Errorf("invalid offset 213"),
+			name:   "edge case offset",
+			offset: 13,
+			err:    io.ErrUnexpectedEOF,
 		},
 		{
-			name:          "Read position 7",
-			offset:        7,
-			expectedBytes: 0xe0d0c0b,
-			want:          nil,
+			name:   "Read position 7",
+			offset: 7,
+			want:   0xe0d0c0b,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-
-			resultBytes, err := testStruct.GetDWordAt(tt.offset)
-			if !checkError(err, tt.want) {
-				t.Errorf("GetBytesAt(): '%v', want '%v'", err, tt.want)
+			got, err := testStruct.GetDWordAt(tt.offset)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetDWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(resultBytes, tt.expectedBytes) && err == nil {
-				t.Errorf("GetBytesAt(): Wrong byte size, %x, want %x", resultBytes, tt.expectedBytes)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetDWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -475,47 +453,49 @@ func Test64GetQWordAt(t *testing.T) {
 	testStruct := Table{
 		Header: Header{
 			Type:   TableTypeBIOSInfo,
-			Length: 16,
+			Length: 20,
 			Handle: 0,
 		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 11, 12, 13, 14, 15, 16, 17, 18},
+		Data: []byte{
+			1, 0, 0, 0,
+			213, 0, 0, 11,
+			12, 13, 14, 15,
+			16, 17, 18, 0,
+		},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name          string
-		offset        int
-		expectedBytes uint64
-		want          error
+	for _, tt := range []struct {
+		name   string
+		offset int
+		want   uint64
+		err    error
 	}{
 		{
-			name:          "Get two bytes",
-			offset:        0,
-			expectedBytes: 0xb0000d500000001,
-			want:          nil,
+			name:   "Get two bytes",
+			offset: 0,
+			want:   0xb0000d500000001,
+			err:    nil,
 		},
 		{
-			name:          "Wrong Offset",
-			offset:        213,
-			expectedBytes: 0,
-			want:          fmt.Errorf("invalid offset 213"),
+			name:   "edge case offset",
+			offset: 9,
+			want:   0,
+			err:    io.ErrUnexpectedEOF,
 		},
 		{
-			name:          "Read position 7",
-			offset:        7,
-			expectedBytes: 0x1211100f0e0d0c0b,
-			want:          nil,
+			name:   "Read position 7",
+			offset: 7,
+			want:   0x1211100f0e0d0c0b,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			resultBytes, err := testStruct.GetQWordAt(tt.offset)
-			if !checkError(err, tt.want) {
-				t.Errorf("GetBytesAt(): '%v', want '%v'", err, tt.want)
+			got, err := testStruct.GetQWordAt(tt.offset)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetQWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(resultBytes, tt.expectedBytes) && err == nil {
-				t.Errorf("GetBytesAt(): Wrong byte size, %x, want %x", resultBytes, tt.expectedBytes)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetQWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
