@@ -287,6 +287,44 @@ func TestParseBIOSInfo(t *testing.T) {
 			},
 			err: ErrUnexpectedTableType,
 		},
+		{
+			name: "BIOS short",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Length: 18,
+					Type:   smbios.TableTypeBIOSInfo,
+				},
+				Data: []byte{
+					0x00, // vendor string
+					0x01, // version string
+					0x02, 0x03,
+					0x02,                                           // release date string
+					0x00,                                           // rom size
+					0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bios chars
+					0x00,
+					0x00,
+				},
+				Strings: []string{
+					"version!",
+					"release date!",
+				},
+			},
+			want: &BIOSInfo{
+				Header: smbios.Header{
+					Length: 18,
+					Type:   smbios.TableTypeBIOSInfo,
+				},
+				Version:                "version!",
+				StartingAddressSegment: 0x302,
+				ReleaseDate:            "release date!",
+				Characteristics:        0x1,
+				BIOSMajor:              0xff,
+				BIOSMinor:              0xff,
+				ECMajor:                0xff,
+				ECMinor:                0xff,
+				ExtendedROMSize:        0,
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ParseBIOSInfo(tt.table)
