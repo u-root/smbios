@@ -505,40 +505,50 @@ func Test64GetStringAt(t *testing.T) {
 	testStruct := Table{
 		Header: Header{
 			Type:   TableTypeBIOSInfo,
-			Length: 16,
+			Length: 20,
 			Handle: 0,
 		},
 		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
 
-	tests := []struct {
-		name           string
-		offset         int
-		expectedString string
+	for _, tt := range []struct {
+		name   string
+		offset int
+		want   string
+		err    error
 	}{
 		{
-			name:           "Valid offset",
-			offset:         0,
-			expectedString: "BIOS Boot Complete",
+			name:   "Valid offset",
+			offset: 0,
+			want:   "BIOS Boot Complete",
 		},
 		{
-			name:           "Not Specified",
-			offset:         2,
-			expectedString: "Not Specified",
+			name:   "Not Specified",
+			offset: 2,
+			want:   "",
 		},
 		{
-			name:           "Bad Index",
-			offset:         4,
-			expectedString: "<BAD INDEX>",
+			name:   "Bad Index",
+			offset: 4,
+			want:   "<BAD INDEX>",
+			err:    io.ErrUnexpectedEOF,
 		},
-	}
-
-	for _, tt := range tests {
-		resultString, _ := testStruct.GetStringAt(tt.offset)
-		if resultString != tt.expectedString {
-			t.Errorf("GetStringAt(): %s, want '%s'", resultString, tt.expectedString)
-		}
+		{
+			name:   "out of bounds",
+			offset: 20,
+			err:    io.ErrUnexpectedEOF,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			got, err := testStruct.GetStringAt(tt.offset)
+			if got != tt.want {
+				t.Errorf("GetStringAt = %s, want %s", got, tt.want)
+			}
+			if !errors.Is(err, tt.err) {
+				t.Errorf("GetStringAt = %s, want %s", err, tt.err)
+			}
+		})
 	}
 }
 

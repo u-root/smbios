@@ -82,14 +82,15 @@ func (t *Table) GetStringAt(offset int) (string, error) {
 	if offset >= len(t.Data) {
 		return "", fmt.Errorf("%w at offset %d with length 1", io.ErrUnexpectedEOF, offset)
 	}
+
 	stringIndex := t.Data[offset]
 	switch {
 	case stringIndex == 0:
-		return "Not Specified", nil
+		return "", nil
 	case int(stringIndex) <= len(t.Strings):
 		return t.Strings[stringIndex-1], nil
 	default:
-		return "<BAD INDEX>", fmt.Errorf("invalid string index %d", stringIndex)
+		return "<BAD INDEX>", fmt.Errorf("%w: string index %d beyond end of string table", io.ErrUnexpectedEOF, stringIndex)
 	}
 }
 
