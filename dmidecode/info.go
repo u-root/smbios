@@ -7,9 +7,15 @@ package dmidecode
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/u-root/smbios"
+)
+
+// Errors parsing tables.
+var (
+	ErrUnexpectedTableType = errors.New("unexpected table type")
 )
 
 const (

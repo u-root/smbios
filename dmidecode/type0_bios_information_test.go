@@ -5,7 +5,9 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -142,19 +144,19 @@ func TestBIOSInfoString(t *testing.T) {
 		{
 			name: "Valid BIOSInfo",
 			val: BIOSInfo{
-				Vendor:                                 "u-root",
-				Version:                                "1.0",
-				StartingAddressSegment:                 0x4,
-				ReleaseDate:                            "2021/11/23",
-				ROMSize:                                8,
-				Characteristics:                        BIOSChars(0x8),
-				CharacteristicsExt1:                    BIOSCharsExt1(0x4),
-				CharacteristicsExt2:                    BIOSCharsExt2(0x2),
-				SystemBIOSMajorRelease:                 1,
-				SystemBIOSMinorRelease:                 2,
-				EmbeddedControllerFirmwareMajorRelease: 3,
-				EmbeddedControllerFirmwareMinorRelease: 1,
-				ExtendedROMSize:                        0x10,
+				Vendor:                 "u-root",
+				Version:                "1.0",
+				StartingAddressSegment: 0x4,
+				ReleaseDate:            "2021/11/23",
+				ROMSize:                8,
+				Characteristics:        BIOSChars(0x8),
+				CharacteristicsExt1:    BIOSCharsExt1(0x4),
+				CharacteristicsExt2:    BIOSCharsExt2(0x2),
+				BIOSMajor:              0xff,
+				BIOSMinor:              0xff,
+				ECMajor:                0xff,
+				ECMinor:                0xff,
+				ExtendedROMSize:        0,
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
@@ -174,7 +176,7 @@ BIOS Information
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.val.String() != tt.want {
-				t.Errorf("BiosInfo().String(): '%s', want '%s'", tt.val.String(), tt.want)
+				t.Errorf("String(): %s, want %s", tt.val.String(), tt.want)
 			}
 		})
 	}
@@ -203,13 +205,10 @@ func TestGetROMSizeBytes(t *testing.T) {
 		{
 			name: "Big Ext Size",
 			val: BIOSInfo{
-				ROMSize: 0xFF,
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a},
+				Header: smbios.Header{
+					Length: 0x1a,
 				},
+				ROMSize:         0xFF,
 				ExtendedROMSize: 0xFFFF,
 			},
 			want: 0x3FFF,
@@ -219,7 +218,6 @@ func TestGetROMSizeBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			romSize := tt.val.GetROMSizeBytes()
-
 			if romSize != tt.want {
 				t.Errorf("BiosInfo().GetROMSizeBytes(): '%v', want '%v'", romSize, tt.want)
 			}
@@ -228,72 +226,82 @@ func TestGetROMSizeBytes(t *testing.T) {
 }
 
 func TestParseBIOSInfo(t *testing.T) {
-	tests := []struct {
+	for _, tt := range []struct {
 		name  string
-		val   BIOSInfo
-		table smbios.Table
-		want  error
+		table *smbios.Table
+		want  *BIOSInfo
+		err   error
 	}{
 		{
-			name: "Parse BIOS Info",
-			val:  BIOSInfo{},
-			table: smbios.Table{
+			name: "BIOS Info",
+			table: &smbios.Table{
 				Header: smbios.Header{
-					Type: smbios.TableTypeBIOSInfo,
+					Length: 22,
+					Type:   smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00, // vendor string
+					0x01, // version string
+					0x02, 0x03,
+					0x02,                                           // release date string
+					0x00,                                           // rom size
+					0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bios chars
+					0x00,
+					0x00,
+					0x0b, 0x0c, // BIOS major, minor
+					0x0d, 0x0e, // EC major minor
+					0x00, 0x10, // rom size
+				},
+				Strings: []string{
+					"version!",
+					"release date!",
+				},
+			},
+			want: &BIOSInfo{
+				Header: smbios.Header{
+					Length: 22,
+					Type:   smbios.TableTypeBIOSInfo,
+				},
+				// TODO
+				Vendor:                 "Not Specified",
+				Version:                "version!",
+				StartingAddressSegment: 0x302,
+				ReleaseDate:            "release date!",
+				Characteristics:        0x1,
+				BIOSMajor:              0xb,
+				BIOSMinor:              0xc,
+				ECMajor:                0xd,
+				ECMinor:                0xe,
+				ExtendedROMSize:        0x1000,
 			},
 		},
 		{
-			name: "Length too short",
-			val:  BIOSInfo{},
-			table: smbios.Table{
+			name: "short",
+			table: &smbios.Table{
 				Header: smbios.Header{
-					Type: smbios.TableTypeBIOSInfo,
+					Length: 4,
+					Type:   smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
+			err: io.ErrUnexpectedEOF,
 		},
 		{
-			name: "Error parsing data",
-			val:  BIOSInfo{},
-			table: smbios.Table{
-				Header: smbios.Header{
-					Type: smbios.TableTypeBIOSInfo,
-				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
-			},
-			want: fmt.Errorf("error parsing data"),
-		},
-		{
-			name: "Length too short",
-			val:  BIOSInfo{},
-			table: smbios.Table{
+			name: "invalid type",
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeCacheInfo,
 				},
-				Data: []byte{},
 			},
-			want: fmt.Errorf("invalid table type 7"),
+			err: ErrUnexpectedTableType,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return 0, tt.want
+			got, err := ParseBIOSInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseBIOSInfo() = %v, want %v", err, tt.err)
 			}
-			_, err := parseBIOSInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("parseBIOSInfo(): '%v', want '%v'", err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseBIOSInfo = %v, want %v", got, tt.want)
 			}
 		})
 	}
