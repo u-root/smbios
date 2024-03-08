@@ -197,7 +197,12 @@ func ParseTables(r io.Reader) (Tables, error) {
 }
 
 // TablesByType returns tables of the specified type.
+//
+// TablesByType is nil-safe.
 func (t Tables) TablesByType(tt TableType) Tables {
+	if t == nil {
+		return nil
+	}
 	var res Tables
 	for _, u := range t {
 		if u.Type == tt {
@@ -208,7 +213,12 @@ func (t Tables) TablesByType(tt TableType) Tables {
 }
 
 // TableByType returns the first table of the specified type.
+//
+// TablesByType is nil-safe.
 func (t Tables) TableByType(tt TableType) *Table {
+	if t == nil {
+		return nil
+	}
 	for _, u := range t {
 		if u.Type == tt {
 			return u

@@ -597,4 +597,13 @@ func TestByType(t *testing.T) {
 	if got := tt.TableByType(1); !reflect.DeepEqual(got, tt[0]) {
 		t.Errorf("ByType(1) = %v, want %v", got, tt[0])
 	}
+
+	// Test nil safety.
+	tt = nil
+	if got := tt.TablesByType(2); got != nil {
+		t.Errorf("ByType(2) = %v, want %v", got, nil)
+	}
+	if got := tt.TableByType(2); got != nil {
+		t.Errorf("ByType(2) = %v, want %v", got, nil)
+	}
 }
