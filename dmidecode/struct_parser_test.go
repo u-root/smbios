@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -52,24 +53,60 @@ func TestParseStructUnsupported(t *testing.T) {
 	}
 }
 
-type supportedTypes struct {
-	smbios.Table
-	SupportedField uint64
-}
+func TestParseStruct(t *testing.T) {
+	type someStruct struct {
+		Off0  uint64
+		Off8  uint8
+		Off9  string
+		_     uint8 `smbios:"-"`
+		Off10 uint16
+		Off14 uint8 `smbios:"skip=2"`
+		_     uint8 `smbios:"-"`
+		Off15 uint8 `smbios:"skip=2,default=0x1"`
+		Off17 uint8 `smbios:"default=0xf"`
+	}
 
-func TestParseStructSupported(t *testing.T) {
-	buffer := []byte{
-		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
-	}
-	table := smbios.Table{
-		Data: buffer,
-	}
-	unknownType := &supportedTypes{
-		Table: table,
-	}
-	off, err := parseStruct(&table, 0, false, unknownType)
-	if err != nil {
-		t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: 'nil'", off, err)
+	for _, tt := range []struct {
+		table *smbios.Table
+		value any
+		err   error
+		want  any
+	}{
+		{
+			table: &smbios.Table{
+				Data: []byte{
+					0x1, 0x0, 0x0, 0x0,
+					0x0, 0x0, 0x0, 0x0,
+					0xff,     // Off8
+					0x1,      // Off9
+					0x2, 0x1, // Off10
+					0xff, 0xff, // skipped
+					0x5, // Off14
+				},
+				Strings: []string{
+					"foobar",
+				},
+			},
+			value: &someStruct{},
+			want: &someStruct{
+				Off0:  0x01,
+				Off8:  0xff,
+				Off9:  "foobar",
+				Off10: 0x102,
+				Off14: 0x05,
+				Off15: 0x1,
+				Off17: 0x0f,
+			},
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			if _, err := parseStruct(tt.table, 0, false, tt.value); !errors.Is(err, tt.err) {
+				t.Errorf("parseStruct = %v, want %v", err, tt.err)
+			}
+			if !reflect.DeepEqual(tt.value, tt.want) {
+				t.Errorf("parseStruct = %v, want %v", tt.value, tt.want)
+			}
+		})
 	}
 }
 
