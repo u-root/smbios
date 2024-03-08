@@ -182,8 +182,8 @@ BIOS Information
 	}
 }
 
-func TestGetROMSizeBytes(t *testing.T) {
-	tests := []struct {
+func TestROMSizeBytes(t *testing.T) {
+	for _, tt := range []struct {
 		name string
 		val  BIOSInfo
 		want uint64
@@ -205,21 +205,16 @@ func TestGetROMSizeBytes(t *testing.T) {
 		{
 			name: "Big Ext Size",
 			val: BIOSInfo{
-				Header: smbios.Header{
-					Length: 0x1a,
-				},
 				ROMSize:         0xFF,
 				ExtendedROMSize: 0xFFFF,
 			},
 			want: 0x3FFF,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			romSize := tt.val.GetROMSizeBytes()
+			romSize := tt.val.ROMSizeBytes()
 			if romSize != tt.want {
-				t.Errorf("BiosInfo().GetROMSizeBytes(): '%v', want '%v'", romSize, tt.want)
+				t.Errorf("GetROMSizeBytes = %v, want %v", romSize, tt.want)
 			}
 		})
 	}
