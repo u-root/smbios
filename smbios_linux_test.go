@@ -5,12 +5,12 @@
 package smbios
 
 import (
+	"os"
 	"testing"
 )
 
 func TestSMBIOSEFISMBIOS2(t *testing.T) {
-	systabPath = "testdata/smbios2_systab"
-	base, size, err := EntryBaseFromEFI()
+	base, size, err := entryBaseFromEFI("testdata/smbios2_systab")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,8 +26,7 @@ func TestSMBIOSEFISMBIOS2(t *testing.T) {
 }
 
 func TestSMBIOSEFISMBIOS3(t *testing.T) {
-	systabPath = "testdata/smbios3_systab"
-	base, size, err := EntryBaseFromEFI()
+	base, size, err := entryBaseFromEFI("testdata/smbios3_systab")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,29 +42,14 @@ func TestSMBIOSEFISMBIOS3(t *testing.T) {
 }
 
 func TestSMBIOSEFINotFound(t *testing.T) {
-	systabPath = "testdata/systab_NOT_FOUND"
-	if _, _, err := EntryBaseFromEFI(); err == nil {
-		t.Errorf("BaseEFI(): nil , want error")
+	if _, _, err := entryBaseFromEFI("testdata/systab_NOT_FOUND"); !os.IsNotExist(err) {
+		t.Errorf("BaseEFI() = %v, want %v", err, os.ErrNotExist)
 	}
 }
 
 func TestSMBIOSEFIInvalid(t *testing.T) {
-	systabPath = "testdata/invalid_systab"
-	_, _, err := EntryBaseFromEFI()
+	_, _, err := entryBaseFromEFI("testdata/invalid_systab")
 	if err == nil {
 		t.Errorf("BaseEFI(): nil , want error")
-	}
-}
-
-func TestBaseEFI(t *testing.T) {
-	systabPath = "testdata/smbios3_systab"
-	base, _, err := EntryBase()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var want int64 = 0x12345678
-	if base != want {
-		t.Errorf("Base(): 0x%x, want 0x%x", base, want)
 	}
 }
