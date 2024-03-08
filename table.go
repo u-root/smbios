@@ -36,7 +36,7 @@ func (t *Table) Len() int {
 // GetByteAt returns a byte from the structured part at the specified offset.
 func (t *Table) GetByteAt(offset int) (uint8, error) {
 	if offset > len(t.Data)-1 {
-		return 0, fmt.Errorf("invalid offset %d", offset)
+		return 0, fmt.Errorf("%w at offset %d", io.ErrUnexpectedEOF, offset)
 	}
 	return t.Data[offset], nil
 }
@@ -44,7 +44,7 @@ func (t *Table) GetByteAt(offset int) (uint8, error) {
 // GetBytesAt returns a number of bytes from the structured part at the specified offset.
 func (t *Table) GetBytesAt(offset, length int) ([]byte, error) {
 	if offset > len(t.Data)-length {
-		return nil, fmt.Errorf("invalid offset %d", offset)
+		return nil, fmt.Errorf("%w at offset %d with length %d", io.ErrUnexpectedEOF, offset, length)
 	}
 	return t.Data[offset : offset+length], nil
 }
@@ -52,7 +52,7 @@ func (t *Table) GetBytesAt(offset, length int) ([]byte, error) {
 // GetWordAt returns a 16-bit word from the structured part at the specified offset.
 func (t *Table) GetWordAt(offset int) (res uint16, err error) {
 	if offset > len(t.Data)-2 {
-		return 0, fmt.Errorf("invalid offset %d", offset)
+		return 0, fmt.Errorf("%w at offset %d with length 2", io.ErrUnexpectedEOF, offset)
 	}
 	err = binary.Read(bytes.NewReader(t.Data[offset:offset+2]), binary.LittleEndian, &res)
 	return res, err
@@ -61,7 +61,7 @@ func (t *Table) GetWordAt(offset int) (res uint16, err error) {
 // GetDWordAt returns a 32-bit word from the structured part at the specified offset.
 func (t *Table) GetDWordAt(offset int) (res uint32, err error) {
 	if offset > len(t.Data)-4 {
-		return 0, fmt.Errorf("invalid offset %d", offset)
+		return 0, fmt.Errorf("%w at offset %d with length 4", io.ErrUnexpectedEOF, offset)
 	}
 	err = binary.Read(bytes.NewReader(t.Data[offset:offset+4]), binary.LittleEndian, &res)
 	return res, err
@@ -70,7 +70,7 @@ func (t *Table) GetDWordAt(offset int) (res uint32, err error) {
 // GetQWordAt returns a 64-bit word from the structured part at the specified offset.
 func (t *Table) GetQWordAt(offset int) (res uint64, err error) {
 	if offset > len(t.Data)-8 {
-		return 0, fmt.Errorf("invalid offset %d", offset)
+		return 0, fmt.Errorf("%w at offset %d with length 8", io.ErrUnexpectedEOF, offset)
 	}
 	err = binary.Read(bytes.NewReader(t.Data[offset:offset+8]), binary.LittleEndian, &res)
 	return res, err
@@ -80,7 +80,7 @@ func (t *Table) GetQWordAt(offset int) (res uint64, err error) {
 // NB: offset is not the string index.
 func (t *Table) GetStringAt(offset int) (string, error) {
 	if offset >= len(t.Data) {
-		return "", fmt.Errorf("invalid offset %d", offset)
+		return "", fmt.Errorf("%w at offset %d with length 1", io.ErrUnexpectedEOF, offset)
 	}
 	stringIndex := t.Data[offset]
 	switch {
