@@ -11,7 +11,7 @@ import (
 	"github.com/u-root/smbios"
 )
 
-func TestBIOSCharacteristicsString(t *testing.T) {
+func TestBIOSCharsString(t *testing.T) {
 	tests := []struct {
 		name string
 		val  uint64
@@ -62,15 +62,15 @@ func TestBIOSCharacteristicsString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resultString := BIOSCharacteristics(tt.val).String()
-			if resultString != tt.want {
-				t.Errorf("BIOSCharacteristics().String(): '%s', want '%s'", resultString, tt.want)
+			got := BIOSChars(tt.val).String()
+			if got != tt.want {
+				t.Errorf("BIOSChars().String(): '%s', want '%s'", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestBIOSCharacteristicsExt1String(t *testing.T) {
+func TestBIOSCharsExt1String(t *testing.T) {
 	tests := []struct {
 		name string
 		val  uint8
@@ -92,18 +92,18 @@ func TestBIOSCharacteristicsExt1String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var testVal = BIOSCharacteristicsExt1(tt.val)
+			var testVal = BIOSCharsExt1(tt.val)
 
 			resultString := testVal.String()
 
 			if resultString != tt.want {
-				t.Errorf("BIOSCharacteristicsExt1().String(): '%s', want '%s'", resultString, tt.want)
+				t.Errorf("BIOSCharsExt1().String(): '%s', want '%s'", resultString, tt.want)
 			}
 		})
 	}
 }
 
-func TestBIOSCharacteristicsExt2String(t *testing.T) {
+func TestBIOSCharsExt2String(t *testing.T) {
 	tests := []struct {
 		name string
 		val  uint8
@@ -122,12 +122,12 @@ func TestBIOSCharacteristicsExt2String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var testVal = BIOSCharacteristicsExt2(tt.val)
+			var testVal = BIOSCharsExt2(tt.val)
 
 			resultString := testVal.String()
 
 			if resultString != tt.want {
-				t.Errorf("BIOSCharacteristicsExt2().String(): '%s', want '%s'", resultString, tt.want)
+				t.Errorf("BIOSCharsExt2().String(): '%s', want '%s'", resultString, tt.want)
 			}
 		})
 	}
@@ -147,9 +147,9 @@ func TestBIOSInfoString(t *testing.T) {
 				StartingAddressSegment:                 0x4,
 				ReleaseDate:                            "2021/11/23",
 				ROMSize:                                8,
-				Characteristics:                        BIOSCharacteristics(0x8),
-				CharacteristicsExt1:                    BIOSCharacteristicsExt1(0x4),
-				CharacteristicsExt2:                    BIOSCharacteristicsExt2(0x2),
+				Characteristics:                        BIOSChars(0x8),
+				CharacteristicsExt1:                    BIOSCharsExt1(0x4),
+				CharacteristicsExt2:                    BIOSCharsExt2(0x2),
 				SystemBIOSMajorRelease:                 1,
 				SystemBIOSMinorRelease:                 2,
 				EmbeddedControllerFirmwareMajorRelease: 3,
