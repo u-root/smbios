@@ -175,10 +175,13 @@ func readStrings(br *bufio.Reader) ([]string, error) {
 	// unreachable.
 }
 
+// Tables is a collection of SMBIOS tables.
+type Tables []*Table
+
 // ParseTables parses all tables from a byte stream.
-func ParseTables(r io.Reader) ([]*Table, error) {
+func ParseTables(r io.Reader) (Tables, error) {
 	br := bufio.NewReader(r)
-	var tt []*Table
+	var tt Tables
 	for {
 		if _, err := br.Peek(1); err == io.EOF {
 			// No more data.
@@ -191,6 +194,27 @@ func ParseTables(r io.Reader) ([]*Table, error) {
 		tt = append(tt, t)
 	}
 	// Unreachable.
+}
+
+// TablesByType returns tables of the specified type.
+func (t Tables) TablesByType(tt TableType) Tables {
+	var res Tables
+	for _, u := range t {
+		if u.Type == tt {
+			res = append(res, u)
+		}
+	}
+	return res
+}
+
+// TableByType returns the first table of the specified type.
+func (t Tables) TableByType(tt TableType) *Table {
+	for _, u := range t {
+		if u.Type == tt {
+			return u
+		}
+	}
+	return nil
 }
 
 // ParseTable parses a table from byte stream.
