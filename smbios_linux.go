@@ -41,7 +41,11 @@ func EntryBaseFromLegacy() (int64, int64, error) {
 
 // EntryBaseFromEFI finds the SMBIOS entry point address in the EFI System Table.
 func EntryBaseFromEFI() (base int64, size int64, err error) {
-	file, err := os.Open(systabPath)
+	return entryBaseFromEFI(systabPath)
+}
+
+func entryBaseFromEFI(path string) (base int64, size int64, err error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return 0, 0, err
 	}
