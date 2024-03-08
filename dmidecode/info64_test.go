@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/u-root/smbios"
 )
 
 func Test64ParseInfoHeaderMalformed(t *testing.T) {
@@ -45,23 +43,6 @@ func Test64MajorVersion(t *testing.T) {
 	}
 }
 
-func Test64GetTablesByType(t *testing.T) {
-	info, err := setupMockData()
-	if err != nil {
-		t.Errorf("error parsing info data: %v", err)
-	}
-
-	table := info.Tables.TablesByType(smbios.TableTypeBIOSInfo)
-	if table == nil {
-		t.Errorf("unable to get type")
-	}
-	if table != nil {
-		if table[0].Header.Type != smbios.TableTypeBIOSInfo {
-			t.Errorf("Wrong type. Got %v but want %v", smbios.TableTypeBIOSInfo, table[0].Header.Type)
-		}
-	}
-}
-
 func setupMockData() (*Info, error) {
 	data, err := os.ReadFile("./testdata/smbios_table.bin")
 	if err != nil {
@@ -75,7 +56,6 @@ func setupMockData() (*Info, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return info, nil
 }
 
@@ -121,45 +101,7 @@ func FuzzParseInfo(f *testing.F) {
 	})
 }
 
-func Test64Len(t *testing.T) {
-	info, err := setupMockData()
-	if err != nil {
-		t.Errorf("error parsing info Data: %v", err)
-	}
-
-	if info.Tables != nil {
-		if info.Tables[0].Len() != 14 {
-			t.Errorf("Wrong length: Got %d want %d", info.Tables[0].Len(), 14)
-		}
-	}
-}
-
-func Test64String(t *testing.T) {
-
-	tableString := `Handle 0x0000, DMI type 222, 14 bytes
-OEM-specific Type
-	Header and Data:
-		DE 0E 00 00 01 99 00 03 10 01 20 02 30 03
-	Strings:
-		Memory Init Complete
-		End of DXE Phase
-		BIOS Boot Complete`
-
-	info, err := setupMockData()
-
-	if err != nil {
-		t.Errorf("error parsing info Data: %v", err)
-	}
-
-	if info.Tables != nil {
-		if info.Tables[0].String() != tableString {
-			t.Errorf("Wrong length: Got %s want %s", info.Tables[0].String(), tableString)
-		}
-	}
-}
-
 func TestKmgt(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		value  uint64

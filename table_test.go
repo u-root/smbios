@@ -607,3 +607,35 @@ func TestByType(t *testing.T) {
 		t.Errorf("ByType(2) = %v, want %v", got, nil)
 	}
 }
+
+func TestTableStringLen(t *testing.T) {
+	want := `Handle 0x0000, DMI type 222, 14 bytes
+OEM-specific Type
+	Header and Data:
+		DE 0E 00 00 01 99 00 03 10 01 20 02 30 03
+	Strings:
+		Memory Init Complete
+		End of DXE Phase
+		BIOS Boot Complete`
+
+	table := &Table{
+		Header: Header{
+			Type:   222,
+			Length: 14,
+			Handle: 0,
+		},
+		Data: []byte{0x01, 0x99, 0x00, 0x03, 0x10, 0x01, 0x20, 0x02, 0x30, 0x03},
+		Strings: []string{
+			"Memory Init Complete",
+			"End of DXE Phase",
+			"BIOS Boot Complete",
+		},
+	}
+
+	if got := table.String(); got != want {
+		t.Errorf("Wrong string: Got %s want %s", got, want)
+	}
+	if got := table.Len(); got != 14 {
+		t.Errorf("Wrong length: Got %d want %d", got, 14)
+	}
+}
