@@ -51,7 +51,7 @@ func Test64GetTablesByType(t *testing.T) {
 		t.Errorf("error parsing info data: %v", err)
 	}
 
-	table := info.GetTablesByType(smbios.TableTypeBIOSInfo)
+	table := info.Tables.TablesByType(smbios.TableTypeBIOSInfo)
 	if table == nil {
 		t.Errorf("unable to get type")
 	}

@@ -174,7 +174,7 @@ func TestParseTable(t *testing.T) {
 func TestParseTables(t *testing.T) {
 	for _, tt := range []struct {
 		b    []byte
-		want []*Table
+		want Tables
 		err  error
 	}{
 		{
@@ -192,8 +192,8 @@ func TestParseTables(t *testing.T) {
 				0x00, 0x00, // handle
 				0x00, 0x00, // end of strings
 			},
-			want: []*Table{
-				{
+			want: Tables{
+				&Table{
 					Header: Header{
 						Type:   1,
 						Length: 4,
@@ -235,15 +235,15 @@ func TestParseTables(t *testing.T) {
 				'b', 'a', 0x00,
 				0x00, // end of strings
 			},
-			want: []*Table{
-				{
+			want: Tables{
+				&Table{
 					Header: Header{
 						Type:   1,
 						Length: 4,
 						Handle: 0,
 					},
 				},
-				{
+				&Table{
 					Header: Header{
 						Type:   1,
 						Length: 10,
@@ -559,5 +559,42 @@ func Test64GetStringAt(t *testing.T) {
 		if resultString != tt.expectedString {
 			t.Errorf("GetStringAt(): %s, want '%s'", resultString, tt.expectedString)
 		}
+	}
+}
+
+func TestByType(t *testing.T) {
+	tt := Tables{
+		&Table{
+			Header: Header{
+				Type:   1,
+				Length: 4,
+				Handle: 0,
+			},
+		},
+		&Table{
+			Header: Header{
+				Type:   1,
+				Length: 10,
+				Handle: 0,
+			},
+			Data: []byte{1, 2, 3, 4, 5, 6},
+			Strings: []string{
+				"a",
+				"ba",
+			},
+		},
+	}
+
+	if got := tt.TablesByType(1); !reflect.DeepEqual(got, tt) {
+		t.Errorf("ByType(1) = %v, want %v", got, tt)
+	}
+	if got := tt.TablesByType(2); got != nil {
+		t.Errorf("ByType(2) = %v, want %v", got, nil)
+	}
+	if got := tt.TableByType(2); got != nil {
+		t.Errorf("ByType(2) = %v, want %v", got, nil)
+	}
+	if got := tt.TableByType(1); !reflect.DeepEqual(got, tt[0]) {
+		t.Errorf("ByType(1) = %v, want %v", got, tt[0])
 	}
 }

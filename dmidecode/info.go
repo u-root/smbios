@@ -19,7 +19,7 @@ const (
 // Info contains the SMBIOS information.
 type Info struct {
 	Entry  smbios.EntryPoint
-	Tables []*smbios.Table
+	Tables smbios.Tables
 }
 
 // String returns a summary of the SMBIOS version and number of tables.
@@ -44,41 +44,30 @@ func ParseInfo(entryData, tableData []byte) (*Info, error) {
 	}, nil
 }
 
-// GetTablesByType returns tables of specific type.
-func (i *Info) GetTablesByType(tt smbios.TableType) []*smbios.Table {
-	var res []*smbios.Table
-	for _, t := range i.Tables {
-		if t.Type == tt {
-			res = append(res, t)
-		}
-	}
-	return res
-}
-
 // GetBIOSInfo returns the Bios Info (type 0) table, if present.
 func (i *Info) GetBIOSInfo() (*BIOSInfo, error) {
-	bt := i.GetTablesByType(smbios.TableTypeBIOSInfo)
-	if len(bt) == 0 {
+	t := i.Tables.TableByType(smbios.TableTypeBIOSInfo)
+	if t == nil {
 		return nil, smbios.ErrTableNotFound
 	}
 	// There can only be one of these.
-	return ParseBIOSInfo(bt[0])
+	return ParseBIOSInfo(t)
 }
 
 // GetSystemInfo returns the System Info (type 1) table, if present.
 func (i *Info) GetSystemInfo() (*SystemInfo, error) {
-	bt := i.GetTablesByType(smbios.TableTypeSystemInfo)
-	if len(bt) == 0 {
+	t := i.Tables.TableByType(smbios.TableTypeSystemInfo)
+	if t == nil {
 		return nil, smbios.ErrTableNotFound
 	}
 	// There can only be one of these.
-	return ParseSystemInfo(bt[0])
+	return ParseSystemInfo(t)
 }
 
 // GetBaseboardInfo returns all the Baseboard Info (type 2) tables present.
 func (i *Info) GetBaseboardInfo() ([]*BaseboardInfo, error) {
 	var res []*BaseboardInfo
-	for _, t := range i.GetTablesByType(smbios.TableTypeBaseboardInfo) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeBaseboardInfo) {
 		bi, err := ParseBaseboardInfo(t)
 		if err != nil {
 			return nil, err
@@ -91,7 +80,7 @@ func (i *Info) GetBaseboardInfo() ([]*BaseboardInfo, error) {
 // GetChassisInfo returns all the Chassis Info (type 3) tables present.
 func (i *Info) GetChassisInfo() ([]*ChassisInfo, error) {
 	var res []*ChassisInfo
-	for _, t := range i.GetTablesByType(smbios.TableTypeChassisInfo) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeChassisInfo) {
 		ci, err := ParseChassisInfo(t)
 		if err != nil {
 			return nil, err
@@ -104,7 +93,7 @@ func (i *Info) GetChassisInfo() ([]*ChassisInfo, error) {
 // GetProcessorInfo returns all the Processor Info (type 4) tables present.
 func (i *Info) GetProcessorInfo() ([]*ProcessorInfo, error) {
 	var res []*ProcessorInfo
-	for _, t := range i.GetTablesByType(smbios.TableTypeProcessorInfo) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeProcessorInfo) {
 		pi, err := ParseProcessorInfo(t)
 		if err != nil {
 			return nil, err
@@ -117,7 +106,7 @@ func (i *Info) GetProcessorInfo() ([]*ProcessorInfo, error) {
 // GetCacheInfo returns all the Cache Info (type 7) tables present.
 func (i *Info) GetCacheInfo() ([]*CacheInfo, error) {
 	var res []*CacheInfo
-	for _, t := range i.GetTablesByType(smbios.TableTypeCacheInfo) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeCacheInfo) {
 		ci, err := ParseCacheInfo(t)
 		if err != nil {
 			return nil, err
@@ -130,7 +119,7 @@ func (i *Info) GetCacheInfo() ([]*CacheInfo, error) {
 // GetSystemSlots returns all the System Slots (type 9) tables present.
 func (i *Info) GetSystemSlots() ([]*SystemSlots, error) {
 	var res []*SystemSlots
-	for _, t := range i.GetTablesByType(smbios.TableTypeSystemSlots) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeSystemSlots) {
 		ss, err := ParseSystemSlots(t)
 		if err != nil {
 			return nil, err
@@ -143,7 +132,7 @@ func (i *Info) GetSystemSlots() ([]*SystemSlots, error) {
 // GetMemoryDevices returns all the Memory Device (type 17) tables present.
 func (i *Info) GetMemoryDevices() ([]*MemoryDevice, error) {
 	var res []*MemoryDevice
-	for _, t := range i.GetTablesByType(smbios.TableTypeMemoryDevice) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeMemoryDevice) {
 		ci, err := NewMemoryDevice(t)
 		if err != nil {
 			return nil, err
@@ -156,7 +145,7 @@ func (i *Info) GetMemoryDevices() ([]*MemoryDevice, error) {
 // GetIPMIDeviceInfo returns all the IPMI Device Info (type 38) tables present.
 func (i *Info) GetIPMIDeviceInfo() ([]*IPMIDeviceInfo, error) {
 	var res []*IPMIDeviceInfo
-	for _, t := range i.GetTablesByType(smbios.TableTypeIPMIDeviceInfo) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeIPMIDeviceInfo) {
 		d, err := ParseIPMIDeviceInfo(t)
 		if err != nil {
 			return nil, err
@@ -169,7 +158,7 @@ func (i *Info) GetIPMIDeviceInfo() ([]*IPMIDeviceInfo, error) {
 // GetTPMDevices returns all the TPM Device (type 43) tables present.
 func (i *Info) GetTPMDevices() ([]*TPMDevice, error) {
 	var res []*TPMDevice
-	for _, t := range i.GetTablesByType(smbios.TableTypeTPMDevice) {
+	for _, t := range i.Tables.TablesByType(smbios.TableTypeTPMDevice) {
 		d, err := NewTPMDevice(t)
 		if err != nil {
 			return nil, err
