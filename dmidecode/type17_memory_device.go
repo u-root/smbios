@@ -156,18 +156,18 @@ func (md *MemoryDevice) String() string {
 		fmt.Sprintf("Size: %s", moduleSizeStr),
 		fmt.Sprintf("Form Factor: %s", md.FormFactor),
 		fmt.Sprintf("Set: %s", setStr),
-		fmt.Sprintf("Locator: %s", md.DeviceLocator),
-		fmt.Sprintf("Bank Locator: %s", md.BankLocator),
+		fmt.Sprintf("Locator: %s", smbiosStr(md.DeviceLocator)),
+		fmt.Sprintf("Bank Locator: %s", smbiosStr(md.BankLocator)),
 		fmt.Sprintf("Type: %s", md.Type),
 		fmt.Sprintf("Type Detail: %s", md.TypeDetail),
 	}
 	if md.Len() > 0x15 {
 		lines = append(lines,
 			fmt.Sprintf("Speed: %s", speedStr(md.Speed)),
-			fmt.Sprintf("Manufacturer: %s", md.Manufacturer),
-			fmt.Sprintf("Serial Number: %s", md.SerialNumber),
-			fmt.Sprintf("Asset Tag: %s", md.AssetTag),
-			fmt.Sprintf("Part Number: %s", md.PartNumber),
+			fmt.Sprintf("Manufacturer: %s", smbiosStr(md.Manufacturer)),
+			fmt.Sprintf("Serial Number: %s", smbiosStr(md.SerialNumber)),
+			fmt.Sprintf("Asset Tag: %s", smbiosStr(md.AssetTag)),
+			fmt.Sprintf("Part Number: %s", smbiosStr(md.PartNumber)),
 		)
 	}
 	if md.Len() > 0x1b {
@@ -223,7 +223,7 @@ func (md *MemoryDevice) String() string {
 		lines = append(lines,
 			fmt.Sprintf("Memory Technology: %s", md.Technology),
 			fmt.Sprintf("Memory Operating Mode Capability: %s", md.OperatingModeCapability),
-			fmt.Sprintf("Firmware Version: %s", md.FirmwareVersion),
+			fmt.Sprintf("Firmware Version: %s", smbiosStr(md.FirmwareVersion)),
 			fmt.Sprintf("Module Manufacturer ID: %s", manufacturerIDStr(md.ModuleManufacturerID)),
 			fmt.Sprintf("Module Product ID: %s", productIDStr(md.ModuleProductID)),
 			fmt.Sprintf("Memory Subsystem Controller Manufacturer ID: %s", manufacturerIDStr(md.SubsystemControllerManufacturerID)),

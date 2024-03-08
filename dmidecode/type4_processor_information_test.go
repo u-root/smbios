@@ -554,12 +554,12 @@ func TestProcessorInfoString(t *testing.T) {
 			val:  ProcessorInfo{},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Type: 0x0
 	Family: 0x0
-	Manufacturer: 
+	Manufacturer: Not Specified
 	ID: 00 00 00 00 00 00 00 00
-	Version: 
+	Version: Not Specified
 	Voltage: 0.0 V
 	External Clock: Unknown
 	Max Speed: Unknown
@@ -590,7 +590,7 @@ BIOS Information
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Type: Central Processor
 	Family: Pentium II Xeon
 	Manufacturer: Google
@@ -608,7 +608,7 @@ BIOS Information
 		DS (Debug store)
 		SSE (Streaming SIMD extensions)
 		HTT (Multi-threading)
-	Version: 
+	Version: Not Specified
 	Voltage: 0.0 V
 	External Clock: Unknown
 	Max Speed: Unknown
@@ -618,9 +618,9 @@ BIOS Information
 	L1 Cache Handle: 0x1337
 	L2 Cache Handle: 0xDEAD
 	L3 Cache Handle: 0xBEEF
-	Serial Number: 
-	Asset Tag: 
-	Part Number: 
+	Serial Number: Not Specified
+	Asset Tag: Not Specified
+	Part Number: Not Specified
 	Core Count: 0
 	Core Enabled: 0
 	Thread Count: 8

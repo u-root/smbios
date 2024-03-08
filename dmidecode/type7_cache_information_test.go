@@ -82,7 +82,7 @@ func TestCacheInfoString(t *testing.T) {
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Configuration: Disabled, Not Socketed, Level 4
 	Operational Mode: Write Through
 	Location: Internal
@@ -118,7 +118,7 @@ BIOS Information
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 1
 	Operational Mode: Unknown
 	Location: External
@@ -154,7 +154,7 @@ BIOS Information
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 3
 	Operational Mode: Varies With Memory Address
 	Location: Reserved
@@ -190,7 +190,7 @@ BIOS Information
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
-	Socket Designation: 
+	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 3
 	Operational Mode: Write Back
 	Location: Unknown
@@ -209,7 +209,6 @@ BIOS Information
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.val.String()
-
 			if result != tt.want {
 				t.Errorf("%q failed. Got: %q, Want: %q", tt.name, result, tt.want)
 			}

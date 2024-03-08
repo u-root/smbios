@@ -18,6 +18,13 @@ var (
 	ErrUnexpectedTableType = errors.New("unexpected table type")
 )
 
+func smbiosStr(s string) string {
+	if s == "" {
+		return "Not Specified"
+	}
+	return s
+}
+
 const (
 	outOfSpec = "<OUT OF SPEC>"
 )

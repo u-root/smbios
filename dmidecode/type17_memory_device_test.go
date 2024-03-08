@@ -253,8 +253,8 @@ BIOS Information
 	Size: No Module Installed
 	Form Factor: 0x0
 	Set: None
-	Locator: 
-	Bank Locator: 
+	Locator: Not Specified
+	Bank Locator: Not Specified
 	Type: 0x0
 	Type Detail: None`,
 		},
@@ -274,8 +274,8 @@ BIOS Information
 	Size: 16 MB
 	Form Factor: 0x0
 	Set: Unknown
-	Locator: 
-	Bank Locator: 
+	Locator: Not Specified
+	Bank Locator: Not Specified
 	Type: 0x0
 	Type Detail: None`,
 		},
@@ -304,8 +304,8 @@ BIOS Information
 	Size: No Module Installed
 	Form Factor: 0x0
 	Set: 254
-	Locator: 
-	Bank Locator: 
+	Locator: Not Specified
+	Bank Locator: Not Specified
 	Type: 0x0
 	Type Detail: None
 	Speed: 256 MT/s
@@ -346,8 +346,8 @@ BIOS Information
 	Size: No Module Installed
 	Form Factor: 0x0
 	Set: 254
-	Locator: 
-	Bank Locator: 
+	Locator: Not Specified
+	Bank Locator: Not Specified
 	Type: 0x0
 	Type Detail: None
 	Speed: 256 MT/s
@@ -404,8 +404,8 @@ BIOS Information
 	Size: No Module Installed
 	Form Factor: 0x0
 	Set: 254
-	Locator: 
-	Bank Locator: 
+	Locator: Not Specified
+	Bank Locator: Not Specified
 	Type: 0x0
 	Type Detail: None
 	Speed: 256 MT/s

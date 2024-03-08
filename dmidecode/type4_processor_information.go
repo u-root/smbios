@@ -173,10 +173,10 @@ func (pi *ProcessorInfo) String() string {
 	}
 	lines := []string{
 		pi.Header.String(),
-		fmt.Sprintf("Socket Designation: %s", pi.SocketDesignation),
+		fmt.Sprintf("Socket Designation: %s", smbiosStr(pi.SocketDesignation)),
 		fmt.Sprintf("Type: %s", pi.Type),
 		fmt.Sprintf("Family: %s", pi.GetFamily()),
-		fmt.Sprintf("Manufacturer: %s", pi.Manufacturer),
+		fmt.Sprintf("Manufacturer: %s", smbiosStr(pi.Manufacturer)),
 		fmt.Sprintf("ID: %02X %02X %02X %02X %02X %02X %02X %02X",
 			(pi.ID>>0)&0xff, (pi.ID>>8)&0xff, (pi.ID>>16)&0xff, (pi.ID>>24)&0xff,
 			(pi.ID>>32)&0xff, (pi.ID>>40)&0xff, (pi.ID>>48)&0xff, (pi.ID>>56)&0xff,
@@ -228,7 +228,7 @@ func (pi *ProcessorInfo) String() string {
 		}
 	}
 	lines = append(lines,
-		fmt.Sprintf("Version: %s", pi.Version),
+		fmt.Sprintf("Version: %s", smbiosStr(pi.Version)),
 		fmt.Sprintf("Voltage: %.1f V", pi.GetVoltage()),
 		fmt.Sprintf("External Clock: %s", freqStr(pi.ExternalClock)),
 		fmt.Sprintf("Max Speed: %s", freqStr(pi.MaxSpeed)),
@@ -245,9 +245,9 @@ func (pi *ProcessorInfo) String() string {
 	}
 	if pi.Len() > 0x20 {
 		lines = append(lines,
-			fmt.Sprintf("Serial Number: %s", pi.SerialNumber),
-			fmt.Sprintf("Asset Tag: %s", pi.AssetTag),
-			fmt.Sprintf("Part Number: %s", pi.PartNumber),
+			fmt.Sprintf("Serial Number: %s", smbiosStr(pi.SerialNumber)),
+			fmt.Sprintf("Asset Tag: %s", smbiosStr(pi.AssetTag)),
+			fmt.Sprintf("Part Number: %s", smbiosStr(pi.PartNumber)),
 		)
 	}
 	if pi.Len() > 0x23 {
