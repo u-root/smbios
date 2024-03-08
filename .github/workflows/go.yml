@@ -78,7 +78,8 @@ jobs:
       - name: Test
         run: |
           mkdir gocov
-          VMTEST_GOCOVERDIR=$(pwd)/gocov runvmtest -- \
+          VMTEST_GOCOVERDIR=$(pwd)/gocov VMTEST_GO_PROFILE=vmcoverage.txt \
+            runvmtest -- \
             go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Convert GOCOVERDIR coverage data
