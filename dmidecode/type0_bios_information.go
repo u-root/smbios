@@ -5,47 +5,43 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
-// BIOSInfo is Defined in DSP0134 7.1.
+// BIOSInfo is defined in DSP0134 7.1.
 type BIOSInfo struct {
-	smbios.Table
-	Vendor                                 string        // 04h
-	Version                                string        // 05h
-	StartingAddressSegment                 uint16        // 06h
-	ReleaseDate                            string        // 08h
-	ROMSize                                uint8         // 09h
-	Characteristics                        BIOSChars     // 0Ah
-	CharacteristicsExt1                    BIOSCharsExt1 // 12h
-	CharacteristicsExt2                    BIOSCharsExt2 // 13h
-	SystemBIOSMajorRelease                 uint8         // 14h
-	SystemBIOSMinorRelease                 uint8         // 15h
-	EmbeddedControllerFirmwareMajorRelease uint8         // 16h
-	EmbeddedControllerFirmwareMinorRelease uint8         // 17h
-	ExtendedROMSize                        uint16        // 18h
+	smbios.Header          `smbios:"-"`
+	Vendor                 string        // 04h
+	Version                string        // 05h
+	StartingAddressSegment uint16        // 06h
+	ReleaseDate            string        // 08h
+	ROMSize                uint8         // 09h
+	Characteristics        BIOSChars     // 0Ah
+	CharacteristicsExt1    BIOSCharsExt1 // 12h
+	CharacteristicsExt2    BIOSCharsExt2 // 13h
+	BIOSMajor              uint8         `smbios:"default=0xff"` // 14h
+	BIOSMinor              uint8         `smbios:"default=0xff"` // 15h
+	ECMajor                uint8         `smbios:"default=0xff"` // 16h
+	ECMinor                uint8         `smbios:"default=0xff"` // 17h
+	ExtendedROMSize        uint16        // 18h
 }
 
 // ParseBIOSInfo parses a generic Table into BIOSInfo.
 func ParseBIOSInfo(t *smbios.Table) (*BIOSInfo, error) {
-	return parseBIOSInfo(parseStruct, t)
-}
-
-func parseBIOSInfo(parsingFunction parseStructure, t *smbios.Table) (*BIOSInfo, error) {
 	if t.Type != smbios.TableTypeBIOSInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
-	if t.Len() < 0x12 {
-		return nil, errors.New("required fields missing")
+	if t.Length < 0x12 {
+		return nil, io.ErrUnexpectedEOF
 	}
-	bi := &BIOSInfo{Table: *t}
-	if _, err := parsingFunction(t, 0 /* off */, false /* complete */, bi); err != nil {
+	bi := &BIOSInfo{
+		Header: t.Header,
+	}
+	if _, err := parseStruct(t, 0 /* off */, false /* complete */, bi); err != nil {
 		return nil, err
 	}
 	return bi, nil
@@ -57,7 +53,7 @@ func (bi *BIOSInfo) GetROMSizeBytes() uint64 {
 		return 65536 * (uint64(bi.ROMSize) + 1)
 	}
 	var extSize uint64
-	if bi.Len() >= 0x1a {
+	if bi.Length >= 0x1a {
 		extSize = uint64(bi.ExtendedROMSize)
 	} else {
 		extSize = 0x10 // 16 MB
@@ -92,11 +88,11 @@ func (bi *BIOSInfo) String() string {
 		bi.CharacteristicsExt1.String(),
 		bi.CharacteristicsExt2.String(),
 	)
-	if bi.Len() >= 0x16 && bi.SystemBIOSMajorRelease != 0xff { // 2.4+
-		lines = append(lines, fmt.Sprintf("\tBIOS Revision: %d.%d", bi.SystemBIOSMajorRelease, bi.SystemBIOSMinorRelease))
+	if bi.BIOSMajor != 0xff { // 2.4+
+		lines = append(lines, fmt.Sprintf("\tBIOS Revision: %d.%d", bi.BIOSMajor, bi.BIOSMinor))
 	}
-	if bi.Len() >= 0x18 && bi.EmbeddedControllerFirmwareMajorRelease != 0xff {
-		lines = append(lines, fmt.Sprintf("\tFirmware Revision: %d.%d", bi.EmbeddedControllerFirmwareMajorRelease, bi.EmbeddedControllerFirmwareMinorRelease))
+	if bi.ECMajor != 0xff {
+		lines = append(lines, fmt.Sprintf("\tFirmware Revision: %d.%d", bi.ECMajor, bi.ECMinor))
 	}
 	return strings.Join(lines, "\n")
 }
