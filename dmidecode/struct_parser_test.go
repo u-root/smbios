@@ -52,6 +52,11 @@ func TestParseStructUnsupported(t *testing.T) {
 	}
 }
 
+type supportedTypes struct {
+	smbios.Table
+	SupportedField uint64
+}
+
 func TestParseStructSupported(t *testing.T) {
 	buffer := []byte{
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
@@ -59,10 +64,9 @@ func TestParseStructSupported(t *testing.T) {
 	table := smbios.Table{
 		Data: buffer,
 	}
-	unknownType := &UnknownTypes{
+	unknownType := &supportedTypes{
 		Table: table,
 	}
-
 	off, err := parseStruct(&table, 0, false, unknownType)
 	if err != nil {
 		t.Errorf("TestParseStructUnsupported : parseStruct() = %d, '%v' want: 'nil'", off, err)

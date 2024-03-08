@@ -104,8 +104,47 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 			return off, fmt.Errorf("failed to parse %s.%s: %s", svtn, f.Name, verr)
 		}
 	}
+
 	if complete && i < sv.NumField() {
 		return off, fmt.Errorf("%s incomplete, got %d of %d fields", svtn, i, sv.NumField())
 	}
+
+	// Fill in defaults
+	for ; i < sv.NumField(); i++ {
+		f := sv.Type().Field(i)
+		fv := sv.Field(i)
+		ft := fv.Type()
+		tags := f.Tag.Get(fieldTagKey)
+		// fmt.Printf("XX %02Xh f %s t %s k %s %s\n", off, f.Name, f.Type.Name(), fv.Kind(), tags)
+		// Check tags first
+		ignore := false
+		var defValue uint64
+		for _, tag := range strings.Split(tags, ",") {
+			tp := strings.Split(tag, "=")
+			switch tp[0] {
+			case "-":
+				ignore = true
+			case "skip":
+				numBytes, _ := strconv.Atoi(tp[1])
+				off += numBytes
+			case "default":
+				defValue, _ = strconv.ParseUint(tp[1], 0, 64)
+			}
+		}
+		if ignore {
+			continue
+		}
+		switch fv.Kind() {
+		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			fv.SetUint(defValue)
+			off += int(ft.Size())
+		case reflect.Struct:
+			off, err := parseStruct(t, off, true /* complete */, fv)
+			if err != nil {
+				return off, err
+			}
+		}
+	}
+
 	return off, nil
 }

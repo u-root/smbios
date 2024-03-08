@@ -36,7 +36,7 @@ func ParseBIOSInfo(t *smbios.Table) (*BIOSInfo, error) {
 		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Length < 0x12 {
-		return nil, io.ErrUnexpectedEOF
+		return nil, fmt.Errorf("%w: BIOS info table must be at least %d bytes", io.ErrUnexpectedEOF, 0x12)
 	}
 	bi := &BIOSInfo{
 		Header: t.Header,
