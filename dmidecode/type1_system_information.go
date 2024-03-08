@@ -6,42 +6,36 @@ package dmidecode
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // SystemInfo is defined in DSP0134 7.2.
 type SystemInfo struct {
-	smbios.Table
-	Manufacturer string     // 04h
-	ProductName  string     // 05h
-	Version      string     // 06h
-	SerialNumber string     // 07h
-	UUID         UUID       // 08h
-	WakeupType   WakeupType // 18h
-	SKUNumber    string     // 19h
-	Family       string     // 1Ah
+	smbios.Header `smbios:"-"`
+	Manufacturer  string     // 04h
+	ProductName   string     // 05h
+	Version       string     // 06h
+	SerialNumber  string     // 07h
+	UUID          UUID       // 08h
+	WakeupType    WakeupType // 18h
+	SKUNumber     string     // 19h
+	Family        string     // 1Ah
 }
 
 // ParseSystemInfo parses a generic Table into SystemInfo.
 func ParseSystemInfo(t *smbios.Table) (*SystemInfo, error) {
-	return parseSystemInfo(parseStruct, t)
-}
-
-func parseSystemInfo(parseFn parseStructure, t *smbios.Table) (*SystemInfo, error) {
 	if t.Type != smbios.TableTypeSystemInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Len() < 8 {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: system info table must be at least %d bytes", io.ErrUnexpectedEOF, 8)
 	}
-	si := &SystemInfo{Table: *t}
-	if _, err := parseFn(t, 0 /* off */, false /* complete */, si); err != nil {
+	si := &SystemInfo{Header: t.Header}
+	if _, err := parseStruct(t, 0 /* off */, false /* complete */, si); err != nil {
 		return nil, err
 	}
 	return si, nil
@@ -65,13 +59,13 @@ func (si *SystemInfo) String() string {
 		fmt.Sprintf("Version: %s", smbiosStr(si.Version)),
 		fmt.Sprintf("Serial Number: %s", smbiosStr(si.SerialNumber)),
 	}
-	if si.Len() >= 8 { // 2.1+
+	if si.Length >= 8 { // 2.1+
 		lines = append(lines,
 			fmt.Sprintf("UUID: %s", si.UUID),
 			fmt.Sprintf("Wake-up Type: %s", si.WakeupType),
 		)
 	}
-	if si.Len() >= 0x19 { // 2.4+
+	if si.Length >= 0x19 { // 2.4+
 		lines = append(lines,
 			fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
 			fmt.Sprintf("Family: %s", smbiosStr(si.Family)),

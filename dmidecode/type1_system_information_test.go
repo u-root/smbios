@@ -5,7 +5,9 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -20,9 +22,8 @@ func TestSystemInfoString(t *testing.T) {
 		{
 			name: "All Infos provided",
 			val: SystemInfo{
-				Table: smbios.Table{
-					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
-						0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf},
+				Header: smbios.Header{
+					Length: 26,
 				},
 				Manufacturer: "u-root testing",
 				ProductName:  "Illusion",
@@ -32,7 +33,7 @@ func TestSystemInfoString(t *testing.T) {
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 26 bytes
 BIOS Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
@@ -46,8 +47,8 @@ BIOS Information
 		{
 			name: "UUID not present",
 			val: SystemInfo{
-				Table: smbios.Table{
-					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9},
+				Header: smbios.Header{
+					Length: 8,
 				},
 				Manufacturer: "u-root testing",
 				ProductName:  "Illusion",
@@ -57,7 +58,7 @@ BIOS Information
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 8 bytes
 BIOS Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
@@ -67,10 +68,10 @@ BIOS Information
 	Wake-up Type: Reserved`,
 		},
 		{
-			name: "UUID not present",
+			name: "UUID not settable",
 			val: SystemInfo{
-				Table: smbios.Table{
-					Data: []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9},
+				Header: smbios.Header{
+					Length: 8,
 				},
 				Manufacturer: "u-root testing",
 				ProductName:  "Illusion",
@@ -80,7 +81,7 @@ BIOS Information
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 8 bytes
 BIOS Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
@@ -94,7 +95,6 @@ BIOS Information
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.val.String()
-
 			if result != tt.want {
 				t.Errorf("SystemInfo().String(): '%s', want '%s'", result, tt.want)
 			}
@@ -131,75 +131,79 @@ func TestUUIDParseField(t *testing.T) {
 }
 
 func TestParseSystemInfo(t *testing.T) {
-	tests := []struct {
-		name  string
-		val   SystemInfo
-		table smbios.Table
-		want  error
+	for _, tt := range []struct {
+		table *smbios.Table
+		want  *SystemInfo
+		err   error
 	}{
 		{
-			name: "Invalid Type",
-			val:  SystemInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
 			},
-			want: fmt.Errorf("invalid table type 0"),
+			err: ErrUnexpectedTableType,
 		},
 		{
-			name: "Invalid Type",
-			val:  SystemInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeSystemInfo,
 				},
-				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
+			err: io.ErrUnexpectedEOF,
 		},
 		{
-			name: "Parse valid SystemInfo",
-			val:  SystemInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
-					Type: smbios.TableTypeSystemInfo,
+					Length: 4 + 4 + 16 + 2,
+					Type:   smbios.TableTypeSystemInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00, 0x01, 0x00, 0x00,
+					0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+					0x00,
+					0x00,
+					0x00,
+				},
+				Strings: []string{
+					"foobar",
+				},
+			},
+			want: &SystemInfo{
+				Header: smbios.Header{
+					Length: 4 + 4 + 16 + 2,
+					Type:   smbios.TableTypeSystemInfo,
+				},
+				ProductName: "foobar",
+				UUID: UUID{
+					0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				},
 			},
 		},
-		{
-			name: "Parse valid SystemInfo",
-			val:  SystemInfo{},
-			table: smbios.Table{
-				Header: smbios.Header{
-					Type: smbios.TableTypeSystemInfo,
+		/*
+			TODO: deal with BAD INDEX cases, check other SMBIOS implementations.
+			{
+				table: &smbios.Table{
+					Header: smbios.Header{
+						Type: smbios.TableTypeSystemInfo,
+					},
+					Data: []byte{
+						0x00, 0x01, 0x02, 0x03,
+					},
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				err: io.ErrUnexpectedEOF,
 			},
-			want: fmt.Errorf("error parsing structure"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return 0, tt.want
+		*/
+	} {
+		t.Run("", func(t *testing.T) {
+			got, err := ParseSystemInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseSystemInfo = %v, want %v", err, tt.err)
 			}
-			_, err := parseSystemInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("parseSystemInfo(): '%v', want '%v'", err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseSystemInfo = %v, want %v", got, tt.want)
 			}
 		})
 	}
