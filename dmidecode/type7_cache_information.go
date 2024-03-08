@@ -117,7 +117,7 @@ func (ci *CacheInfo) String() string {
 
 	lines := []string{
 		ci.Header.String(),
-		fmt.Sprintf("Socket Designation: %s", ci.SocketDesignation),
+		fmt.Sprintf("Socket Designation: %s", smbiosStr(ci.SocketDesignation)),
 		fmt.Sprintf("Configuration: %s, %s, Level %d", enDis, sock, (ci.Configuration&7)+1),
 		fmt.Sprintf("Operational Mode: %s", om),
 		fmt.Sprintf("Location: %s", loc),

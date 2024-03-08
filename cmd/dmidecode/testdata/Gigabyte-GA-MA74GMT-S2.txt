@@ -56,10 +56,10 @@ Base Board Information
 	Product Name: GA-MA74GMT-S2
 	Version: x.x
 	Serial Number:  
-	Asset Tag: 
+	Asset Tag: Not Specified
 	Features:
 		
-	Location In Chassis: 
+	Location In Chassis: Not Specified
 	Chassis Handle: 0x0000
 	Type: 0x0
 	Contained Object Handles: 0

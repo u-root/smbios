@@ -65,7 +65,7 @@ func (di *TPMDevice) String() string {
 		)
 	}
 	lines = append(lines,
-		fmt.Sprintf("Description: %s", di.Description),
+		fmt.Sprintf("Description: %s", smbiosStr(di.Description)),
 		fmt.Sprintf("Characteristics:\n%s", di.Characteristics),
 		fmt.Sprintf("OEM-specific Info: 0x%08X", di.OEMDefined),
 	)

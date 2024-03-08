@@ -69,9 +69,9 @@ func (bi *BIOSInfo) ROMSizeBytes() uint64 {
 func (bi *BIOSInfo) String() string {
 	lines := []string{
 		bi.Header.String(),
-		fmt.Sprintf("\tVendor: %s", bi.Vendor),
-		fmt.Sprintf("\tVersion: %s", bi.Version),
-		fmt.Sprintf("\tRelease Date: %s", bi.ReleaseDate),
+		fmt.Sprintf("\tVendor: %s", smbiosStr(bi.Vendor)),
+		fmt.Sprintf("\tVersion: %s", smbiosStr(bi.Version)),
+		fmt.Sprintf("\tRelease Date: %s", smbiosStr(bi.ReleaseDate)),
 	}
 	if bi.StartingAddressSegment != 0 {
 		lines = append(lines,

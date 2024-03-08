@@ -60,10 +60,10 @@ func (u *UUID) ParseField(t *smbios.Table, off int) (int, error) {
 func (si *SystemInfo) String() string {
 	lines := []string{
 		si.Header.String(),
-		fmt.Sprintf("Manufacturer: %s", si.Manufacturer),
-		fmt.Sprintf("Product Name: %s", si.ProductName),
-		fmt.Sprintf("Version: %s", si.Version),
-		fmt.Sprintf("Serial Number: %s", si.SerialNumber),
+		fmt.Sprintf("Manufacturer: %s", smbiosStr(si.Manufacturer)),
+		fmt.Sprintf("Product Name: %s", smbiosStr(si.ProductName)),
+		fmt.Sprintf("Version: %s", smbiosStr(si.Version)),
+		fmt.Sprintf("Serial Number: %s", smbiosStr(si.SerialNumber)),
 	}
 	if si.Len() >= 8 { // 2.1+
 		lines = append(lines,
@@ -73,8 +73,8 @@ func (si *SystemInfo) String() string {
 	}
 	if si.Len() >= 0x19 { // 2.4+
 		lines = append(lines,
-			fmt.Sprintf("SKU Number: %s", si.SKUNumber),
-			fmt.Sprintf("Family: %s", si.Family),
+			fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
+			fmt.Sprintf("Family: %s", smbiosStr(si.Family)),
 		)
 	}
 	return strings.Join(lines, "\n\t")

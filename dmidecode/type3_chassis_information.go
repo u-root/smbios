@@ -88,11 +88,11 @@ func (si *ChassisInfo) String() string {
 	}
 	lines := []string{
 		si.Header.String(),
-		fmt.Sprintf("Manufacturer: %s", si.Manufacturer),
+		fmt.Sprintf("Manufacturer: %s", smbiosStr(si.Manufacturer)),
 		fmt.Sprintf("Type: %s", si.Type),
-		fmt.Sprintf("Lock: %s", lockStr),
-		fmt.Sprintf("Version: %s", si.Version),
-		fmt.Sprintf("Serial Number: %s", si.SerialNumber),
+		fmt.Sprintf("Lock: %s", smbiosStr(lockStr)),
+		fmt.Sprintf("Version: %s", smbiosStr(si.Version)),
+		fmt.Sprintf("Serial Number: %s", smbiosStr(si.SerialNumber)),
 		fmt.Sprintf("Asset Tag: %s", si.AssetTagNumber),
 	}
 	if si.Len() >= 9 { // 2.1+
@@ -127,7 +127,7 @@ func (si *ChassisInfo) String() string {
 	}
 	if si.Len() > 0x15+int(si.ContainedElementCount)*int(si.ContainedElementsRecordLength) {
 		lines = append(lines,
-			fmt.Sprintf("SKU Number: %s", si.SKUNumber),
+			fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
 		)
 	}
 	return strings.Join(lines, "\n\t")

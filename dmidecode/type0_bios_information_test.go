@@ -257,8 +257,6 @@ func TestParseBIOSInfo(t *testing.T) {
 					Length: 22,
 					Type:   smbios.TableTypeBIOSInfo,
 				},
-				// TODO
-				Vendor:                 "Not Specified",
 				Version:                "version!",
 				StartingAddressSegment: 0x302,
 				ReleaseDate:            "release date!",
