@@ -47,18 +47,15 @@ func ParseBIOSInfo(t *smbios.Table) (*BIOSInfo, error) {
 	return bi, nil
 }
 
-// GetROMSizeBytes returns ROM size in bytes.
-func (bi *BIOSInfo) GetROMSizeBytes() uint64 {
-	if bi.ROMSize != 0xff {
+// ROMSizeBytes returns ROM size in bytes.
+func (bi *BIOSInfo) ROMSizeBytes() uint64 {
+	if bi.ROMSize != 0xff || bi.ExtendedROMSize == 0 {
 		return 65536 * (uint64(bi.ROMSize) + 1)
 	}
-	var extSize uint64
-	if bi.Length >= 0x1a {
-		extSize = uint64(bi.ExtendedROMSize)
-	} else {
-		extSize = 0x10 // 16 MB
-	}
+
+	extSize := uint64(bi.ExtendedROMSize)
 	unit := (extSize >> 14)
+
 	multiplier := uint64(1)
 	switch unit {
 	case 0:
@@ -83,7 +80,7 @@ func (bi *BIOSInfo) String() string {
 		)
 	}
 	lines = append(lines,
-		fmt.Sprintf("\tROM Size: %s", kmgt(bi.GetROMSizeBytes())),
+		fmt.Sprintf("\tROM Size: %s", kmgt(bi.ROMSizeBytes())),
 		fmt.Sprintf("\tCharacteristics:\n%s", bi.Characteristics),
 		bi.CharacteristicsExt1.String(),
 		bi.CharacteristicsExt2.String(),
