@@ -58,18 +58,10 @@ func (si *SystemInfo) String() string {
 		fmt.Sprintf("Product Name: %s", smbiosStr(si.ProductName)),
 		fmt.Sprintf("Version: %s", smbiosStr(si.Version)),
 		fmt.Sprintf("Serial Number: %s", smbiosStr(si.SerialNumber)),
-	}
-	if si.Length >= 8 { // 2.1+
-		lines = append(lines,
-			fmt.Sprintf("UUID: %s", si.UUID),
-			fmt.Sprintf("Wake-up Type: %s", si.WakeupType),
-		)
-	}
-	if si.Length >= 0x19 { // 2.4+
-		lines = append(lines,
-			fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
-			fmt.Sprintf("Family: %s", smbiosStr(si.Family)),
-		)
+		fmt.Sprintf("UUID: %s", si.UUID),
+		fmt.Sprintf("Wake-up Type: %s", si.WakeupType),
+		fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
+		fmt.Sprintf("Family: %s", smbiosStr(si.Family)),
 	}
 	return strings.Join(lines, "\n\t")
 }
@@ -112,19 +104,20 @@ const (
 	WakeupTypeACPowerRestored WakeupType = 0x08 // AC Power Restored
 )
 
+var wakeupStrings = map[WakeupType]string{
+	WakeupTypeReserved:        "Reserved",
+	WakeupTypeOther:           "Other",
+	WakeupTypeUnknown:         "Unknown",
+	WakeupTypeAPMTimer:        "APM Timer",
+	WakeupTypeModemRing:       "Modem Ring",
+	WakeupTypeLANRemote:       "LAN Remote",
+	WakeupTypePowerSwitch:     "Power Switch",
+	WakeupTypePCIPME:          "PCI PME#",
+	WakeupTypeACPowerRestored: "AC Power Restored",
+}
+
 func (v WakeupType) String() string {
-	names := map[WakeupType]string{
-		WakeupTypeReserved:        "Reserved",
-		WakeupTypeOther:           "Other",
-		WakeupTypeUnknown:         "Unknown",
-		WakeupTypeAPMTimer:        "APM Timer",
-		WakeupTypeModemRing:       "Modem Ring",
-		WakeupTypeLANRemote:       "LAN Remote",
-		WakeupTypePowerSwitch:     "Power Switch",
-		WakeupTypePCIPME:          "PCI PME#",
-		WakeupTypeACPowerRestored: "AC Power Restored",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := wakeupStrings[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
