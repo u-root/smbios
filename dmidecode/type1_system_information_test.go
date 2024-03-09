@@ -23,6 +23,7 @@ func TestSystemInfoString(t *testing.T) {
 			name: "All Infos provided",
 			val: SystemInfo{
 				Header: smbios.Header{
+					Type:   smbios.TableTypeSystemInfo,
 					Length: 26,
 				},
 				Manufacturer: "u-root testing",
@@ -33,8 +34,8 @@ func TestSystemInfoString(t *testing.T) {
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 26 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 1, 26 bytes
+System Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
 	Version: 1.0
@@ -48,6 +49,7 @@ BIOS Information
 			name: "UUID not present",
 			val: SystemInfo{
 				Header: smbios.Header{
+					Type:   smbios.TableTypeSystemInfo,
 					Length: 8,
 				},
 				Manufacturer: "u-root testing",
@@ -58,19 +60,22 @@ BIOS Information
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 8 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 1, 8 bytes
+System Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
 	Version: 1.0
 	Serial Number: UR00T1234
 	UUID: Not Present
-	Wake-up Type: Reserved`,
+	Wake-up Type: Reserved
+	SKU Number: 3a
+	Family: UR00T1234`,
 		},
 		{
 			name: "UUID not settable",
 			val: SystemInfo{
 				Header: smbios.Header{
+					Type:   smbios.TableTypeSystemInfo,
 					Length: 8,
 				},
 				Manufacturer: "u-root testing",
@@ -81,14 +86,16 @@ BIOS Information
 				SKUNumber:    "3a",
 				Family:       "UR00T1234",
 			},
-			want: `Handle 0x0000, DMI type 0, 8 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 1, 8 bytes
+System Information
 	Manufacturer: u-root testing
 	Product Name: Illusion
 	Version: 1.0
 	Serial Number: UR00T1234
 	UUID: Not Settable
-	Wake-up Type: Reserved`,
+	Wake-up Type: Reserved
+	SKU Number: 3a
+	Family: UR00T1234`,
 		},
 	}
 
@@ -111,8 +118,10 @@ func TestUUIDParseField(t *testing.T) {
 		{
 			name: "Valid UUID",
 			val: smbios.Table{
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
-					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03},
+				Data: []byte{
+					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
+					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
+				},
 			},
 			want: "03020100-0100-0302-0001-020300010203",
 		},
