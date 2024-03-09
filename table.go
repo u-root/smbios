@@ -49,6 +49,15 @@ func (t *Table) GetBytesAt(offset, length int) ([]byte, error) {
 	return t.Data[offset : offset+length], nil
 }
 
+// ReadAt reads from the formatted section of the table.
+func (t *Table) ReadAt(p []byte, off int64) (int, error) {
+	if int(off) > len(t.Data)-len(p) {
+		return 0, fmt.Errorf("%w at offset %d with length %d", io.ErrUnexpectedEOF, off, len(p))
+	}
+	n := copy(p, t.Data[int(off):])
+	return n, nil
+}
+
 // GetWordAt returns a 16-bit word from the structured part at the specified offset.
 func (t *Table) GetWordAt(offset int) (res uint16, err error) {
 	if offset > len(t.Data)-2 {

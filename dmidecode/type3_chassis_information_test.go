@@ -5,7 +5,10 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"os"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -20,24 +23,22 @@ func TestChassisInfoString(t *testing.T) {
 		{
 			name: "Full Information",
 			val: ChassisInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Type:   smbios.TableTypeChassisInfo,
+					Length: 0xe,
 				},
-				Manufacturer:                  "The Ancients",
-				Type:                          ChassisTypeAllInOne,
-				Version:                       "One",
-				SerialNumber:                  "TheAncients-01",
-				AssetTagNumber:                "Two",
-				BootupState:                   ChassisStateSafe,
-				PowerSupplyState:              ChassisStateSafe,
-				ThermalState:                  ChassisStateNonrecoverable,
-				SecurityStatus:                ChassisSecurityStatusUnknown,
-				OEMInfo:                       0xABCD0123,
-				Height:                        3,
-				NumberOfPowerCords:            1,
-				ContainedElementCount:         2,
-				ContainedElementsRecordLength: 2,
+				Manufacturer:       "The Ancients",
+				Type:               ChassisTypeAllInOne,
+				Version:            "One",
+				SerialNumber:       "TheAncients-01",
+				AssetTagNumber:     "Two",
+				BootupState:        ChassisStateSafe,
+				PowerSupplyState:   ChassisStateSafe,
+				ThermalState:       ChassisStateNonrecoverable,
+				SecurityStatus:     ChassisSecurityStatusUnknown,
+				OEMInfo:            0xABCD0123,
+				Height:             3,
+				NumberOfPowerCords: 1,
 				ContainedElements: []ChassisContainedElement{
 					{
 						Type: ChassisElementType(8),
@@ -52,8 +53,8 @@ func TestChassisInfoString(t *testing.T) {
 				},
 				SKUNumber: "Four",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 3, 14 bytes
+Chassis Information
 	Manufacturer: The Ancients
 	Type: All In One
 	Lock: Not Present
@@ -69,13 +70,12 @@ BIOS Information
 	Number Of Power Cords: 1
 	Contained Elements: 2
 		Memory Module 3-11
-		0x0 0-1
-	SKU Number: Four`,
+		0x0 0-1`,
 		}, {
 			name: "Minimal Information",
 			val: ChassisInfo{
-				Table: smbios.Table{
-					Data: []byte{},
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
 				},
 				Manufacturer:   "The Ancients",
 				Type:           ChassisTypeTower,
@@ -83,8 +83,8 @@ BIOS Information
 				SerialNumber:   "TheAncients-02",
 				AssetTagNumber: "Three",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 3, 0 bytes
+Chassis Information
 	Manufacturer: The Ancients
 	Type: Tower
 	Lock: Not Present
@@ -97,7 +97,6 @@ BIOS Information
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.val.String()
-
 			if result != tt.want {
 				t.Errorf("ChassisInfo().String(): %v, want '%v'", result, tt.want)
 			}
@@ -147,99 +146,135 @@ func TestChassisTypeString(t *testing.T) {
 
 	for id := range testResults {
 		val := ChassisType(id + 1)
-
 		if val.String() != testResults[id] {
-			t.Errorf("ChassisType().String(): '%s', want '%s'", val.String(), testResults[id])
+			t.Errorf("ChassisType().String() = %s want %s", val.String(), testResults[id])
 		}
 	}
 }
 
 func TestParseChassisInfo(t *testing.T) {
-	tests := []struct {
+	for _, tt := range []struct {
 		name  string
-		val   *ChassisInfo
-		table smbios.Table
-		want  error
+		table *smbios.Table
+		want  *ChassisInfo
+		err   error
 	}{
 		{
 			name: "Invalid Type",
-			val:  &ChassisInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
 			},
-			want: fmt.Errorf("invalid table type 0"),
+			err: ErrUnexpectedTableType,
 		},
 		{
 			name: "Required fields are missing",
-			val:  &ChassisInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeChassisInfo,
 				},
 				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
+			err: io.ErrUnexpectedEOF,
 		},
 		{
 			name: "Error parsing structure",
-			val:  &ChassisInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeChassisInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+				Data: []byte{
+					0x00, 0x01, 0x02, 0x03, 0x04,
+					0x05, 0x06, 0x07,
+					0x08,
+					0x09, 0x0a,
+					0x0b,
+					0x0c, // element size
+					0x0d, 0x0e, 0x0f, 0x10,
 					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+					0x1a,
+				},
 			},
-			want: fmt.Errorf("error parsing structure"),
+			err: os.ErrInvalid,
 		},
 		{
 			name: "Parse valid SystemInfo",
-			val: &ChassisInfo{
-				Table: smbios.Table{
-					Header: smbios.Header{
-						Type: smbios.TableTypeChassisInfo,
-					},
-					Data: []byte{0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a, 0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a},
-				},
-				ContainedElementCount:         7,
-				ContainedElementsRecordLength: 0x10,
-			},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeChassisInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, // chassis states
+					0x00,                   // security status
+					0x00, 0x00, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num powercords
+					0x03, // num elements
+					0x03, // element size
+					0x11, 0x12, 0x13,
+					0x14, 0x15, 0x16,
+					0x17, 0x18, 0x19,
+					0x01, // SKU
+				},
+				Strings: []string{
+					"SKU!",
+				},
 			},
-			want: nil,
+			want: &ChassisInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
+				},
+				ContainedElements: []ChassisContainedElement{
+					{Type: 0x11, Min: 0x12, Max: 0x13},
+					{Type: 0x14, Min: 0x15, Max: 0x16},
+					{Type: 0x17, Min: 0x18, Max: 0x19},
+				},
+				SKUNumber: "SKU!",
+			},
 		},
-	}
-
-	for _, tt := range tests {
+		{
+			name: "Parse valid SystemInfo",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
+				},
+				Data: []byte{
+					0x00,
+					0x01, // type
+					0x00,
+					0x00,
+					0x00,
+					0x03, 0x03, 0x03, // states
+					0x03,                   // security
+					0x34, 0x12, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num power
+					0x00, // num elems
+					0x00, // elem size
+				},
+			},
+			want: &ChassisInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeChassisInfo,
+				},
+				Type:             0x01,
+				BootupState:      0x03,
+				PowerSupplyState: 0x03,
+				ThermalState:     0x03,
+				SecurityStatus:   0x03,
+				OEMInfo:          0x1234,
+			},
+		},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return len(tt.val.Data), tt.want
+			got, err := ParseChassisInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseChassisInfo = %v, want %v", err, tt.err)
 			}
-			_, err := parseChassisInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("parseChassisInfo(): '%v', want '%v'", err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseChassisInfo = %v, want %v", got, tt.want)
 			}
 		})
 	}
