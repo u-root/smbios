@@ -5,7 +5,9 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -36,10 +38,8 @@ func TestGetFamily(t *testing.T) {
 		{
 			name: "Type 0xfe",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3a,
 				},
 				Family:  0xfe,
 				Family2: 0xaa,
@@ -113,13 +113,11 @@ func TestGetVoltage(t *testing.T) {
 }
 
 func TestGetCoreCount(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  ProcessorInfo
 		want int
 	}{
 		{
-			name: "",
 			val: ProcessorInfo{
 				CoreCount:  4,
 				CoreCount2: 8,
@@ -127,12 +125,9 @@ func TestGetCoreCount(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				CoreCount:  4,
 				CoreCount2: 8,
@@ -140,39 +135,31 @@ func TestGetCoreCount(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				CoreCount:  0xff,
 				CoreCount2: 8,
 			},
 			want: 8,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.val.GetCoreCount()
-
-			if result != tt.want {
-				t.Errorf("GetCorCount(): '%v', want '%v'", result, tt.want)
+	} {
+		t.Run("", func(t *testing.T) {
+			got := tt.val.GetCoreCount()
+			if got != tt.want {
+				t.Errorf("GetCoreCount = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGetCoreEnabled(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  ProcessorInfo
 		want int
 	}{
 		{
-			name: "",
 			val: ProcessorInfo{
 				CoreEnabled:  4,
 				CoreEnabled2: 8,
@@ -180,12 +167,9 @@ func TestGetCoreEnabled(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				CoreEnabled:  4,
 				CoreEnabled2: 8,
@@ -193,39 +177,31 @@ func TestGetCoreEnabled(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				CoreEnabled:  0xff,
 				CoreEnabled2: 0x8ff,
 			},
 			want: 0x8ff,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.val.GetCoreEnabled()
-
-			if result != tt.want {
-				t.Errorf("GetCoreEnabled() '%v', want '%v'", result, tt.want)
+	} {
+		t.Run("", func(t *testing.T) {
+			got := tt.val.GetCoreEnabled()
+			if got != tt.want {
+				t.Errorf("GetCoreEnabled = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGetThreadCount(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  ProcessorInfo
 		want int
 	}{
 		{
-			name: "Count 4",
 			val: ProcessorInfo{
 				ThreadCount:  4,
 				ThreadCount2: 8,
@@ -233,12 +209,9 @@ func TestGetThreadCount(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "Count 4",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				ThreadCount:  4,
 				ThreadCount2: 8,
@@ -246,80 +219,47 @@ func TestGetThreadCount(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "Count 8ff",
 			val: ProcessorInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-						0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
+				Header: smbios.Header{
+					Length: 0x3c,
 				},
 				ThreadCount:  0xff,
 				ThreadCount2: 0x8ff,
 			},
 			want: 0x8ff,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.val.GetThreadCount()
-
-			if result != tt.want {
-				t.Errorf("GetThreadCount(): '%v', want '%v'", result, tt.want)
+	} {
+		t.Run("", func(t *testing.T) {
+			got := tt.val.GetThreadCount()
+			if got != tt.want {
+				t.Errorf("GetThreadCount = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestProcessorTypeString(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  ProcessorType
 		want string
 	}{
 		{
-			name: "Other",
 			val:  ProcessorType(1),
 			want: "Other",
 		},
 		{
-			name: "Unknown",
-			val:  ProcessorType(2),
-			want: "Unknown",
-		},
-		{
-			name: "Central Processor",
-			val:  ProcessorType(3),
-			want: "Central Processor",
-		},
-		{
-			name: "Math Processor",
-			val:  ProcessorType(4),
-			want: "Math Processor",
-		},
-		{
-			name: "DSP Processor",
-			val:  ProcessorType(5),
-			want: "DSP Processor",
-		},
-		{
-			name: "Video Processor",
 			val:  ProcessorType(6),
 			want: "Video Processor",
 		},
 		{
-			name: "Unknown Processor",
 			val:  ProcessorType(8),
 			want: "0x8",
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.val.String()
-
-			if result != tt.want {
-				t.Errorf("ProcessorType().String(): '%s', want '%s'", result, tt.want)
+	} {
+		t.Run("", func(t *testing.T) {
+			got := tt.val.String()
+			if got != tt.want {
+				t.Errorf("ProcessorType = %s, want %s", got, tt.want)
 			}
 		})
 	}
@@ -457,101 +397,87 @@ func TestProcessorCharacteristicsString(t *testing.T) {
 func TestParseProcessorInfo(t *testing.T) {
 	tests := []struct {
 		name  string
-		val   *ProcessorInfo
-		table smbios.Table
-		want  error
+		table *smbios.Table
+		want  *ProcessorInfo
+		err   error
 	}{
 		{
 			name: "Invalid Type",
-			val:  &ProcessorInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
 			},
-			want: fmt.Errorf("invalid table type 0"),
+			err: ErrUnexpectedTableType,
 		},
 		{
 			name: "Required fields are missing",
-			val:  &ProcessorInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeProcessorInfo,
 				},
-				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
-		},
-		{
-			name: "Error parsing structure",
-			val:  &ProcessorInfo{},
-			table: smbios.Table{
-				Header: smbios.Header{
-					Type: smbios.TableTypeProcessorInfo,
-				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
-			},
-			want: fmt.Errorf("error parsing structure"),
+			err: io.ErrUnexpectedEOF,
 		},
 		{
 			name: "Parse valid ProcessorInfo",
-			val: &ProcessorInfo{
-				Table: smbios.Table{
-					Header: smbios.Header{
-						Type: smbios.TableTypeProcessorInfo,
-					},
-					Data: []byte{0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a, 0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a},
-				},
-			},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeProcessorInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00, // SocketDesig
+					0x01, // type
+					0x03, // family
+					0x00, // manufacturer
+					0x01, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, // id
+					0x00,       // version
+					0x01,       // voltage
+					0x01, 0x00, // clock
+					0x02, 0x00, // max speed
+					0x03, 0x00, // current speed
+					0x0a, // status
+					0x0f, // upgrade
+				},
 			},
-			want: nil,
+			want: &ProcessorInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeProcessorInfo,
+				},
+				Type:          0x1,
+				Family:        0x3,
+				ID:            0x1,
+				Voltage:       0x1,
+				ExternalClock: 0x1,
+				MaxSpeed:      0x2,
+				CurrentSpeed:  0x3,
+				Status:        0xa,
+				Upgrade:       0xf,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return len(tt.val.Data), tt.want
+			got, err := ParseProcessorInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseProcessorInfo = %v, want %v", err, tt.err)
 			}
-			_, err := parseProcessorInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("parseProcessorInfo(): '%v', want '%v'", err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseProcessorInfo = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestProcessorInfoString(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  ProcessorInfo
 		want string
 	}{
 		{
-			name: "Empty Struct",
-			val:  ProcessorInfo{},
+			val: ProcessorInfo{},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
 	Socket Designation: Not Specified
@@ -568,7 +494,6 @@ BIOS Information
 	Upgrade: 0x0`,
 		},
 		{
-			name: "Full Struct 0x10 Fam",
 			val: ProcessorInfo{
 				Type:          ProcessorTypeCentralProcessor,
 				Family:        0x10,
@@ -577,19 +502,14 @@ BIOS Information
 				L1CacheHandle: 0x1337,
 				L2CacheHandle: 0xDEAD,
 				L3CacheHandle: 0xBEEF,
-				Table: smbios.Table{
-					Data: []byte{0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a, 0x7, 0x01, 0x02, 0x07, 0x04, 0x05, 0x06, 0x07,
-						0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-						0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-						0x1a},
+				Header: smbios.Header{
+					Length: 0x3c,
+					Type:   smbios.TableTypeProcessorInfo,
 				},
 				ThreadCount: 8,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
-BIOS Information
+			want: `Handle 0x0000, DMI type 4, 60 bytes
+Processor Information
 	Socket Designation: Not Specified
 	Type: Central Processor
 	Family: Pentium II Xeon
@@ -627,12 +547,10 @@ BIOS Information
 	Characteristics:
 		`,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	} {
+		t.Run("", func(t *testing.T) {
 			if tt.val.String() != tt.want {
-				t.Errorf("ProcessorInfo().String(): '%s', want '%s'", tt.val.String(), tt.want)
+				t.Errorf("ProcessorInfo = %s, want %s", tt.val.String(), tt.want)
 			}
 		})
 	}
