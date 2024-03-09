@@ -54,6 +54,9 @@ func TestParseStructUnsupported(t *testing.T) {
 }
 
 func TestParseStruct(t *testing.T) {
+	type foobar struct {
+		Foo uint8 `smbios:"default=0xe"`
+	}
 	type someStruct struct {
 		Off0  uint64
 		Off8  uint8
@@ -64,6 +67,7 @@ func TestParseStruct(t *testing.T) {
 		_     uint8 `smbios:"-"`
 		Off15 uint8 `smbios:"skip=2,default=0x1"`
 		Off17 uint8 `smbios:"default=0xf"`
+		Off18 foobar
 	}
 
 	for _, tt := range []struct {
@@ -96,6 +100,9 @@ func TestParseStruct(t *testing.T) {
 				Off14: 0x05,
 				Off15: 0x1,
 				Off17: 0x0f,
+				Off18: foobar{
+					Foo: 0xe,
+				},
 			},
 		},
 	} {

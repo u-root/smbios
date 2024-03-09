@@ -139,7 +139,7 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 			fv.SetUint(defValue)
 			off += int(ft.Size())
 		case reflect.Struct:
-			off, err := parseStruct(t, off, true /* complete */, fv)
+			off, err := parseStruct(t, off, false /* complete */, fv)
 			if err != nil {
 				return off, err
 			}
