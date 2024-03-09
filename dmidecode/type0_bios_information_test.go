@@ -136,13 +136,11 @@ func TestBIOSCharsExt2String(t *testing.T) {
 }
 
 func TestBIOSInfoString(t *testing.T) {
-	tests := []struct {
-		name string
+	for _, tt := range []struct {
 		val  BIOSInfo
 		want string
 	}{
 		{
-			name: "Valid BIOSInfo",
 			val: BIOSInfo{
 				Vendor:                 "u-root",
 				Version:                "1.0",
@@ -171,10 +169,39 @@ BIOS Information
 		AGP is supported
 		Function key-initiated network boot is supported`,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		{
+			val: BIOSInfo{
+				Vendor:                 "u-root",
+				Version:                "1.0",
+				StartingAddressSegment: 0x4,
+				ReleaseDate:            "2021/11/23",
+				ROMSize:                0xff,
+				Characteristics:        BIOSChars(0x8),
+				CharacteristicsExt1:    BIOSCharsExt1(0x4),
+				CharacteristicsExt2:    BIOSCharsExt2(0x2),
+				BIOSMajor:              1,
+				BIOSMinor:              2,
+				ECMajor:                3,
+				ECMinor:                4,
+				ExtendedROMSize:        1010,
+			},
+			want: `Handle 0x0000, DMI type 0, 0 bytes
+BIOS Information
+	Vendor: u-root
+	Version: 1.0
+	Release Date: 2021/11/23
+	Address: 0x00040
+	Runtime Size: 1048512 bytes
+	ROM Size: 1010 MB
+	Characteristics:
+		BIOS characteristics not supported
+		AGP is supported
+		Function key-initiated network boot is supported
+	BIOS Revision: 1.2
+	Firmware Revision: 3.4`,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
 			if tt.val.String() != tt.want {
 				t.Errorf("String(): %s, want %s", tt.val.String(), tt.want)
 			}
@@ -273,6 +300,16 @@ func TestParseBIOSInfo(t *testing.T) {
 			table: &smbios.Table{
 				Header: smbios.Header{
 					Length: 4,
+					Type:   smbios.TableTypeBIOSInfo,
+				},
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			name: "not parseable",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Length: 18,
 					Type:   smbios.TableTypeBIOSInfo,
 				},
 			},
