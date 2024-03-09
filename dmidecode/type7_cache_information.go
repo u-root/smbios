@@ -5,18 +5,16 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // CacheInfo is defined in DSP0134 7.8.
 type CacheInfo struct {
-	smbios.Table
+	smbios.Header       `smbios:"-"`
 	SocketDesignation   string                   // 04h
 	Configuration       uint16                   // 05h
 	MaximumSize         uint16                   // 07h
@@ -33,18 +31,14 @@ type CacheInfo struct {
 
 // ParseCacheInfo parses a generic smbios.Table into CacheInfo.
 func ParseCacheInfo(t *smbios.Table) (*CacheInfo, error) {
-	return parseCacheInfo(parseStruct, t)
-}
-
-func parseCacheInfo(parseFn parseStructure, t *smbios.Table) (*CacheInfo, error) {
 	if t.Type != smbios.TableTypeCacheInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Len() < 0xf {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: cache info table must be at least %d bytes", io.ErrUnexpectedEOF, 0xf)
 	}
-	ci := &CacheInfo{Table: *t}
-	_, err := parseFn(t, 0 /* off */, false /* complete */, ci)
+	ci := &CacheInfo{Header: t.Header}
+	_, err := parseStruct(t, 0 /* off */, false /* complete */, ci)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +120,7 @@ func (ci *CacheInfo) String() string {
 		fmt.Sprintf("Supported SRAM Types:\n%s", ci.SupportedSRAMType),
 		fmt.Sprintf("Installed SRAM Type: %s", strings.TrimSpace(ci.CurrentSRAMType.String())),
 	}
-	if ci.Len() > 0xf {
+	if ci.Length > 0xf {
 		lines = append(lines,
 			fmt.Sprintf("Speed: %s", speedStr),
 			fmt.Sprintf("Error Correction Type: %s", ci.ErrorCorrectionType),
@@ -151,28 +145,22 @@ const (
 	CacheSRAMTypeAsynchronous  CacheSRAMType = 1 << 6 // Asynchronous
 )
 
+var cacheSRAM = map[CacheSRAMType]string{
+	CacheSRAMTypeOther:         "Other",
+	CacheSRAMTypeUnknown:       "Unknown",
+	CacheSRAMTypeNonBurst:      "Non-Burst",
+	CacheSRAMTypeBurst:         "Burst",
+	CacheSRAMTypePipelineBurst: "Pipeline Burst",
+	CacheSRAMTypeSynchronous:   "Synchronous",
+	CacheSRAMTypeAsynchronous:  "Asynchronous",
+}
+
 func (v CacheSRAMType) String() string {
 	var lines []string
-	if v&CacheSRAMTypeOther != 0 {
-		lines = append(lines, "Other")
-	}
-	if v&CacheSRAMTypeUnknown != 0 {
-		lines = append(lines, "Unknown")
-	}
-	if v&CacheSRAMTypeNonBurst != 0 {
-		lines = append(lines, "Non-Burst")
-	}
-	if v&CacheSRAMTypeBurst != 0 {
-		lines = append(lines, "Burst")
-	}
-	if v&CacheSRAMTypePipelineBurst != 0 {
-		lines = append(lines, "Pipeline Burst")
-	}
-	if v&CacheSRAMTypeSynchronous != 0 {
-		lines = append(lines, "Synchronous")
-	}
-	if v&CacheSRAMTypeAsynchronous != 0 {
-		lines = append(lines, "Asynchronous")
+	for i := 0; i < 7; i++ {
+		if v&(1<<i) != 0 {
+			lines = append(lines, cacheSRAM[1<<i])
+		}
 	}
 	return "\t\t" + strings.Join(lines, "\n\t\t")
 }
@@ -190,16 +178,17 @@ const (
 	CacheErrorCorrectionTypeMultibitECC  CacheErrorCorrectionType = 0x06 // Multi-bit ECC
 )
 
+var cacheECStr = map[CacheErrorCorrectionType]string{
+	CacheErrorCorrectionTypeOther:        "Other",
+	CacheErrorCorrectionTypeUnknown:      "Unknown",
+	CacheErrorCorrectionTypeNone:         "None",
+	CacheErrorCorrectionTypeParity:       "Parity",
+	CacheErrorCorrectionTypeSinglebitECC: "Single-bit ECC",
+	CacheErrorCorrectionTypeMultibitECC:  "Multi-bit ECC",
+}
+
 func (v CacheErrorCorrectionType) String() string {
-	names := map[CacheErrorCorrectionType]string{
-		CacheErrorCorrectionTypeOther:        "Other",
-		CacheErrorCorrectionTypeUnknown:      "Unknown",
-		CacheErrorCorrectionTypeNone:         "None",
-		CacheErrorCorrectionTypeParity:       "Parity",
-		CacheErrorCorrectionTypeSinglebitECC: "Single-bit ECC",
-		CacheErrorCorrectionTypeMultibitECC:  "Multi-bit ECC",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := cacheECStr[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
@@ -217,15 +206,16 @@ const (
 	CacheSystemTypeUnified     CacheSystemType = 0x05 // Unified
 )
 
+var cacheSTStr = map[CacheSystemType]string{
+	CacheSystemTypeOther:       "Other",
+	CacheSystemTypeUnknown:     "Unknown",
+	CacheSystemTypeInstruction: "Instruction",
+	CacheSystemTypeData:        "Data",
+	CacheSystemTypeUnified:     "Unified",
+}
+
 func (v CacheSystemType) String() string {
-	names := map[CacheSystemType]string{
-		CacheSystemTypeOther:       "Other",
-		CacheSystemTypeUnknown:     "Unknown",
-		CacheSystemTypeInstruction: "Instruction",
-		CacheSystemTypeData:        "Data",
-		CacheSystemTypeUnified:     "Unified",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := cacheSTStr[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
@@ -252,24 +242,25 @@ const (
 	CacheAssociativity20waySetAssociative CacheAssociativity = 0x0e // 20-way Set-associative
 )
 
+var cacheAssocStr = map[CacheAssociativity]string{
+	CacheAssociativityOther:               "Other",
+	CacheAssociativityUnknown:             "Unknown",
+	CacheAssociativityDirectMapped:        "Direct Mapped",
+	CacheAssociativity2waySetAssociative:  "2-way Set-associative",
+	CacheAssociativity4waySetAssociative:  "4-way Set-associative",
+	CacheAssociativityFullyAssociative:    "Fully Associative",
+	CacheAssociativity8waySetAssociative:  "8-way Set-associative",
+	CacheAssociativity16waySetAssociative: "16-way Set-associative",
+	CacheAssociativity12waySetAssociative: "12-way Set-associative",
+	CacheAssociativity24waySetAssociative: "24-way Set-associative",
+	CacheAssociativity32waySetAssociative: "32-way Set-associative",
+	CacheAssociativity48waySetAssociative: "48-way Set-associative",
+	CacheAssociativity64waySetAssociative: "64-way Set-associative",
+	CacheAssociativity20waySetAssociative: "20-way Set-associative",
+}
+
 func (v CacheAssociativity) String() string {
-	names := map[CacheAssociativity]string{
-		CacheAssociativityOther:               "Other",
-		CacheAssociativityUnknown:             "Unknown",
-		CacheAssociativityDirectMapped:        "Direct Mapped",
-		CacheAssociativity2waySetAssociative:  "2-way Set-associative",
-		CacheAssociativity4waySetAssociative:  "4-way Set-associative",
-		CacheAssociativityFullyAssociative:    "Fully Associative",
-		CacheAssociativity8waySetAssociative:  "8-way Set-associative",
-		CacheAssociativity16waySetAssociative: "16-way Set-associative",
-		CacheAssociativity12waySetAssociative: "12-way Set-associative",
-		CacheAssociativity24waySetAssociative: "24-way Set-associative",
-		CacheAssociativity32waySetAssociative: "32-way Set-associative",
-		CacheAssociativity48waySetAssociative: "48-way Set-associative",
-		CacheAssociativity64waySetAssociative: "64-way Set-associative",
-		CacheAssociativity20waySetAssociative: "20-way Set-associative",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := cacheAssocStr[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))

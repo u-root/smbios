@@ -5,7 +5,9 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -63,9 +65,8 @@ func TestCacheInfoString(t *testing.T) {
 		{
 			name: "Full details",
 			val: CacheInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-						0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+				Header: smbios.Header{
+					Length: 0x2a,
 				},
 				SocketDesignation:   "",
 				Configuration:       0x03,
@@ -80,7 +81,7 @@ func TestCacheInfoString(t *testing.T) {
 				MaximumSize2:        0x200,
 				InstalledSize2:      0x00,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 42 bytes
 BIOS Information
 	Socket Designation: Not Specified
 	Configuration: Disabled, Not Socketed, Level 4
@@ -99,9 +100,8 @@ BIOS Information
 		{
 			name: "More details",
 			val: CacheInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-						0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+				Header: smbios.Header{
+					Length: 0x2c,
 				},
 				SocketDesignation:   "",
 				Configuration:       0x3A8,
@@ -116,7 +116,7 @@ BIOS Information
 				MaximumSize2:        0x200,
 				InstalledSize2:      0x00,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 44 bytes
 BIOS Information
 	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 1
@@ -135,9 +135,8 @@ BIOS Information
 		{
 			name: "More details",
 			val: CacheInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-						0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+				Header: smbios.Header{
+					Length: 0x2c,
 				},
 				SocketDesignation:   "",
 				Configuration:       0x2CA,
@@ -152,7 +151,7 @@ BIOS Information
 				MaximumSize2:        0x200,
 				InstalledSize2:      0x00,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 44 bytes
 BIOS Information
 	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 3
@@ -171,9 +170,8 @@ BIOS Information
 		{
 			name: "More details",
 			val: CacheInfo{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-						0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+				Header: smbios.Header{
+					Length: 0x2c,
 				},
 				SocketDesignation:   "",
 				Configuration:       0x1EA,
@@ -188,7 +186,7 @@ BIOS Information
 				MaximumSize2:        0x200,
 				InstalledSize2:      0x00,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 44 bytes
 BIOS Information
 	Socket Designation: Not Specified
 	Configuration: Enabled, Socketed, Level 3
@@ -208,85 +206,74 @@ BIOS Information
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.val.String()
-			if result != tt.want {
-				t.Errorf("%q failed. Got: %q, Want: %q", tt.name, result, tt.want)
+			got := tt.val.String()
+			if got != tt.want {
+				t.Errorf("String = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestParseInfoCache(t *testing.T) {
-	tests := []struct {
+	for _, tt := range []struct {
 		name  string
-		val   CacheInfo
-		table smbios.Table
-		want  error
+		table *smbios.Table
+		want  *CacheInfo
+		err   error
 	}{
 		{
 			name: "Invalid Type",
-			val:  CacheInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
 			},
-			want: fmt.Errorf("invalid table type 0"),
+			err: ErrUnexpectedTableType,
 		},
 		{
 			name: "Required fields are missing",
-			val:  CacheInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeCacheInfo,
 				},
-				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
+			err: io.ErrUnexpectedEOF,
 		},
-		{
-			name: "Error parsing structure",
-			val:  CacheInfo{},
-			table: smbios.Table{
-				Header: smbios.Header{
-					Type: smbios.TableTypeCacheInfo,
-				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
-			},
-			want: fmt.Errorf("error parsing structure"),
-		},
+
 		{
 			name: "Parse valid CacheInfo",
-			val:  CacheInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeCacheInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00,
+					0x01, 0x02,
+					0x03, 0x04,
+					0x05, 0x06,
+					0x07, 0x08,
+					0x09, 0x0a,
+				},
 			},
-			want: nil,
+			want: &CacheInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeCacheInfo,
+				},
+				Configuration:     0x0201,
+				MaximumSize:       0x0403,
+				InstalledSize:     0x0605,
+				SupportedSRAMType: 0x0807,
+				CurrentSRAMType:   0x0a09,
+			},
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return 0, tt.want
+			got, err := ParseCacheInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseCacheInfo = %v, want %v", err, tt.err)
 			}
-			_, err := parseCacheInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("%q failed. Got: %q, Want: %q", tt.name, err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseCacheInfo = %v, want %v", got, tt.want)
 			}
 		})
 	}
