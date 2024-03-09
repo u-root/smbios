@@ -5,60 +5,41 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // BaseboardInfo is defined in DSP0134 7.3.
 type BaseboardInfo struct {
-	smbios.Table
-	Manufacturer                   string        // 04h
-	Product                        string        // 05h
-	Version                        string        // 06h
-	SerialNumber                   string        // 07h
-	AssetTag                       string        // 08h
-	BoardFeatures                  BoardFeatures // 09h
-	LocationInChassis              string        // 0Ah
-	ChassisHandle                  uint16        // 0Bh
-	BoardType                      BoardType     // 0Dh
-	NumberOfContainedObjectHandles uint8         // 0Eh
-	ContainedObjectHandles         []uint16      `smbios:"-"` // 0Fh
+	smbios.Header     `smbios:"-"`
+	Manufacturer      string        // 04h
+	Product           string        // 05h
+	Version           string        // 06h
+	SerialNumber      string        // 07h
+	AssetTag          string        // 08h
+	BoardFeatures     BoardFeatures // 09h
+	LocationInChassis string        // 0Ah
+	ChassisHandle     uint16        // 0Bh
+	BoardType         BoardType     // 0Dh
+	ObjectHandles     ObjectHandles // 0Eh
 }
 
 // ParseBaseboardInfo parses a generic smbios.Table into BaseboardInfo.
 func ParseBaseboardInfo(t *smbios.Table) (*BaseboardInfo, error) {
-	return parseBaseboardInfo(parseStruct, t)
-}
-
-func parseBaseboardInfo(parseFn parseStructure, t *smbios.Table) (*BaseboardInfo, error) {
 	if t.Type != smbios.TableTypeBaseboardInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	// Defined in DSP0134 7.3, length of the structure is at least 08h.
 	if t.Len() < 0x8 {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: baseboard info table must be at least %d bytes", io.ErrUnexpectedEOF, 8)
 	}
-	bi := &BaseboardInfo{Table: *t}
-	off, err := parseFn(t, 0 /* off */, false /* complete */, bi)
+	bi := &BaseboardInfo{Header: t.Header}
+	_, err := parseStruct(t, 0 /* off */, false /* complete */, bi)
 	if err != nil {
 		return nil, err
-	}
-	if bi.NumberOfContainedObjectHandles > 0 {
-		if t.Len() != off+2*int(bi.NumberOfContainedObjectHandles) {
-			return nil, errors.New("invalid data length")
-		}
-		for i := 0; i < int(bi.NumberOfContainedObjectHandles); i++ {
-			h, err := t.GetWordAt(off)
-			if err != nil {
-				return nil, err
-			}
-			bi.ContainedObjectHandles = append(bi.ContainedObjectHandles, h)
-		}
 	}
 	return bi, nil
 }
@@ -75,10 +56,7 @@ func (bi *BaseboardInfo) String() string {
 		fmt.Sprintf("Location In Chassis: %s", smbiosStr(bi.LocationInChassis)),
 		fmt.Sprintf("Chassis Handle: 0x%04X", bi.ChassisHandle),
 		fmt.Sprintf("Type: %s", bi.BoardType),
-		fmt.Sprintf("Contained Object Handles: %d", bi.NumberOfContainedObjectHandles),
-	}
-	for _, h := range bi.ContainedObjectHandles {
-		lines = append(lines, fmt.Sprintf("\t0x%04X", h))
+		bi.ObjectHandles.str(),
 	}
 	return strings.Join(lines, "\n\t")
 }
@@ -95,22 +73,20 @@ const (
 	BoardFeaturesIsAHostingBoard                 BoardFeatures = 1 << 0 // Set to 1 if the board is a hosting board (for example, a motherboard)
 )
 
+var boardFeatureStr = map[BoardFeatures]string{
+	BoardFeaturesIsAHostingBoard:                 "Board is a hosting board",
+	BoardFeaturesRequiresAtLeastOneDaughterBoard: "Board requires at least one daughter board",
+	BoardFeaturesIsRemovable:                     "Board is removable",
+	BoardFeaturesIsReplaceable:                   "Board is replaceable",
+	BoardFeaturesIsHotSwappable:                  "Board is hot swappable",
+}
+
 func (v BoardFeatures) String() string {
 	var lines []string
-	if v&BoardFeaturesIsAHostingBoard != 0 {
-		lines = append(lines, "Board is a hosting board")
-	}
-	if v&BoardFeaturesRequiresAtLeastOneDaughterBoard != 0 {
-		lines = append(lines, "Board requires at least one daughter board")
-	}
-	if v&BoardFeaturesIsRemovable != 0 {
-		lines = append(lines, "Board is removable")
-	}
-	if v&BoardFeaturesIsReplaceable != 0 {
-		lines = append(lines, "Board is replaceable")
-	}
-	if v&BoardFeaturesIsHotSwappable != 0 {
-		lines = append(lines, "Board is hot swappable")
+	for i := 0; i < 5; i++ {
+		if v&(1<<i) != 0 {
+			lines = append(lines, boardFeatureStr[1<<i])
+		}
 	}
 	return "\t\t" + strings.Join(lines, "\n\t\t")
 }
@@ -135,24 +111,63 @@ const (
 	BoardTypeInterconnectBoard                       BoardType = 0x0d // Interconnect board
 )
 
+var boardStrings = map[BoardType]string{
+	BoardTypeUnknown:                                 "Unknown",
+	BoardTypeOther:                                   "Other",
+	BoardTypeServerBlade:                             "Server Blade",
+	BoardTypeConnectivitySwitch:                      "Connectivity Switch",
+	BoardTypeSystemManagementModule:                  "System Management Module",
+	BoardTypeProcessorModule:                         "Processor Module",
+	BoardTypeIOModule:                                "I/O Module",
+	BoardTypeMemoryModule:                            "Memory Module",
+	BoardTypeDaughterBoard:                           "Daughter board",
+	BoardTypeMotherboardIncludesProcessorMemoryAndIO: "Motherboard",
+	BoardTypeProcessorMemoryModule:                   "Processor/Memory Module",
+	BoardTypeProcessorIOModule:                       "Processor/IO Module",
+	BoardTypeInterconnectBoard:                       "Interconnect board",
+}
+
 func (v BoardType) String() string {
-	names := map[BoardType]string{
-		BoardTypeUnknown:                                 "Unknown",
-		BoardTypeOther:                                   "Other",
-		BoardTypeServerBlade:                             "Server Blade",
-		BoardTypeConnectivitySwitch:                      "Connectivity Switch",
-		BoardTypeSystemManagementModule:                  "System Management Module",
-		BoardTypeProcessorModule:                         "Processor Module",
-		BoardTypeIOModule:                                "I/O Module",
-		BoardTypeMemoryModule:                            "Memory Module",
-		BoardTypeDaughterBoard:                           "Daughter board",
-		BoardTypeMotherboardIncludesProcessorMemoryAndIO: "Motherboard",
-		BoardTypeProcessorMemoryModule:                   "Processor/Memory Module",
-		BoardTypeProcessorIOModule:                       "Processor/IO Module",
-		BoardTypeInterconnectBoard:                       "Interconnect board",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := boardStrings[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
+}
+
+// ObjectHandles are defined in DSP0134 v4.7 Section 7.3 and embedded in the Baseboard structure.
+type ObjectHandles []uint16
+
+func (oh ObjectHandles) String() string {
+	lines := []string{fmt.Sprintf("Contained Object Handles: %d", len(oh))}
+	for _, h := range oh {
+		lines = append(lines, fmt.Sprintf("\t0x%04X", h))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (oh ObjectHandles) str() string {
+	lines := []string{fmt.Sprintf("Contained Object Handles: %d", len(oh))}
+	for _, h := range oh {
+		lines = append(lines, fmt.Sprintf("\t\t0x%04X", h))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// ParseField parses object handles as defined by DSP0134 Section 7.3.
+func (oh *ObjectHandles) ParseField(t *smbios.Table, off int) (int, error) {
+	num, err := t.GetByteAt(off)
+	if err != nil {
+		return off, err
+	}
+	off++
+
+	for i := uint8(0); i < num; i++ {
+		h, err := t.GetWordAt(off)
+		if err != nil {
+			return off, err
+		}
+		*oh = append(*oh, h)
+		off += 2
+	}
+	return off, nil
 }
