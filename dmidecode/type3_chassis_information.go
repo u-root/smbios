@@ -5,36 +5,32 @@
 package dmidecode
 
 import (
-	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // ChassisInfo is defined in DSP0134 7.4.
 type ChassisInfo struct {
-	smbios.Table
-	Manufacturer                  string                    // 04h
-	Type                          ChassisType               // 05h
-	Version                       string                    // 06h
-	SerialNumber                  string                    // 07h
-	AssetTagNumber                string                    // 08h
-	BootupState                   ChassisState              // 09h
-	PowerSupplyState              ChassisState              // 0Ah
-	ThermalState                  ChassisState              // 0Bh
-	SecurityStatus                ChassisSecurityStatus     // 0Ch
-	OEMInfo                       uint32                    // 0Dh
-	Height                        uint8                     // 11h
-	NumberOfPowerCords            uint8                     // 12h
-	ContainedElementCount         uint8                     // 13h
-	ContainedElementsRecordLength uint8                     // 14h
-	ContainedElements             []ChassisContainedElement `smbios:"-"` // 15h
-	SKUNumber                     string                    `smbios:"-"` // 15h + CEC * CERL
+	smbios.Header      `smbios:"-"`
+	Manufacturer       string                   // 04h
+	Type               ChassisType              // 05h
+	Version            string                   // 06h
+	SerialNumber       string                   // 07h
+	AssetTagNumber     string                   // 08h
+	BootupState        ChassisState             // 09h
+	PowerSupplyState   ChassisState             // 0Ah
+	ThermalState       ChassisState             // 0Bh
+	SecurityStatus     ChassisSecurityStatus    // 0Ch
+	OEMInfo            uint32                   // 0Dh
+	Height             uint8                    // 11h
+	NumberOfPowerCords uint8                    // 12h
+	ContainedElements  ChassisContainedElements // 13h
+	SKUNumber          string                   // 15h + CEC * CERL
 }
 
 // ChassisContainedElement is defined in DSP0134 7.4.4.
@@ -44,39 +40,22 @@ type ChassisContainedElement struct {
 	Max  uint8              // 02h
 }
 
-// ParseChassisInfo parses a generic smbios.Table into ChassisInfo.
-func ParseChassisInfo(t *smbios.Table) (*ChassisInfo, error) {
-	return parseChassisInfo(parseStruct, t)
+func (cce ChassisContainedElement) String() string {
+	return fmt.Sprintf("%s %d-%d", cce.Type, cce.Min, cce.Max)
 }
 
-func parseChassisInfo(parseFn parseStructure, t *smbios.Table) (*ChassisInfo, error) {
+// ParseChassisInfo parses a generic smbios.Table into ChassisInfo.
+func ParseChassisInfo(t *smbios.Table) (*ChassisInfo, error) {
 	if t.Type != smbios.TableTypeChassisInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Len() < 0x9 {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: system info table must be at least %d bytes", io.ErrUnexpectedEOF, 9)
 	}
-	si := &ChassisInfo{Table: *t}
-	off, err := parseFn(t, 0 /* off */, false /* complete */, si)
+	si := &ChassisInfo{Header: t.Header}
+	_, err := parseStruct(t, 0 /* off */, false /* complete */, si)
 	if err != nil {
 		return nil, err
-	}
-	if si.ContainedElementCount > 0 && si.ContainedElementsRecordLength > 0 {
-		if t.Len() < off+int(si.ContainedElementCount)*int(si.ContainedElementsRecordLength) {
-			return nil, fmt.Errorf("invalid data length %d %d %d %d", t.Len(), off, si.ContainedElementCount, si.ContainedElementsRecordLength)
-		}
-		for i := 0; i < int(si.ContainedElementCount); i++ {
-			var e ChassisContainedElement
-			eb, _ := t.GetBytesAt(off, int(si.ContainedElementsRecordLength))
-			if err = binary.Read(bytes.NewReader(eb), binary.LittleEndian, &e); err != nil {
-				return nil, err
-			}
-			si.ContainedElements = append(si.ContainedElements, e)
-			off += int(si.ContainedElementsRecordLength)
-		}
-	}
-	if off < t.Len() {
-		si.SKUNumber, _ = t.GetStringAt(off)
 	}
 	return si, nil
 }
@@ -95,7 +74,7 @@ func (si *ChassisInfo) String() string {
 		fmt.Sprintf("Serial Number: %s", smbiosStr(si.SerialNumber)),
 		fmt.Sprintf("Asset Tag: %s", si.AssetTagNumber),
 	}
-	if si.Len() >= 9 { // 2.1+
+	if si.Header.Length >= 9 { // 2.1+
 		lines = append(lines,
 			fmt.Sprintf("Boot-up State: %s", si.BootupState),
 			fmt.Sprintf("Power Supply State: %s", si.PowerSupplyState),
@@ -103,7 +82,7 @@ func (si *ChassisInfo) String() string {
 			fmt.Sprintf("Security Status: %s", si.SecurityStatus),
 		)
 	}
-	if si.Len() >= 0xd { // 2.3+
+	if si.Header.Length >= 0xd { // 2.3+
 		heightStr, numPCStr := "Unspecified", "Unspecified"
 		if si.Height != 0 {
 			heightStr = fmt.Sprintf("%d U", si.Height)
@@ -115,17 +94,10 @@ func (si *ChassisInfo) String() string {
 			fmt.Sprintf("OEM Information: 0x%08X", si.OEMInfo),
 			fmt.Sprintf("Height: %s", heightStr),
 			fmt.Sprintf("Number Of Power Cords: %s", numPCStr),
+			si.ContainedElements.str(),
 		)
-		lines = append(lines,
-			fmt.Sprintf("Contained Elements: %d", si.ContainedElementCount),
-		)
-		for _, e := range si.ContainedElements {
-			lines = append(lines,
-				fmt.Sprintf("\t%s %d-%d", e.Type, e.Min, e.Max),
-			)
-		}
 	}
-	if si.Len() > 0x15+int(si.ContainedElementCount)*int(si.ContainedElementsRecordLength) {
+	if int(si.Header.Length) > 0x15+len(si.ContainedElements)*3 {
 		lines = append(lines,
 			fmt.Sprintf("SKU Number: %s", smbiosStr(si.SKUNumber)),
 		)
@@ -176,80 +148,49 @@ const (
 	ChassisTypeStickPC             ChassisType = 0x24 // Stick PC
 )
 
+var chassisTypeStr = []string{
+	"Other",
+	"Unknown",
+	"Desktop",
+	"Low Profile Desktop",
+	"Pizza Box",
+	"Mini Tower",
+	"Tower",
+	"Portable",
+	"Laptop",
+	"Notebook",
+	"Hand Held",
+	"Docking Station",
+	"All In One",
+	"Sub Notebook",
+	"Space-saving",
+	"Lunch Box",
+	"Main Server Chassis",
+	"Expansion Chassis",
+	"Sub Chassis",
+	"Bus Expansion Chassis",
+	"Peripheral Chassis",
+	"RAID Chassis",
+	"Rack Mount Chassis",
+	"Sealed-case PC",
+	"Multi-system",
+	"CompactPCI",
+	"AdvancedTCA",
+	"Blade",
+	"Blade Chassis",
+	"Tablet",
+	"Convertible",
+	"Detachable",
+	"IoT Gateway",
+	"Embedded PC",
+	"Mini PC",
+	"Stick PC",
+}
+
 func (v ChassisType) String() string {
-	switch v & 0x7f {
-	case ChassisTypeOther:
-		return "Other"
-	case ChassisTypeUnknown:
-		return "Unknown"
-	case ChassisTypeDesktop:
-		return "Desktop"
-	case ChassisTypeLowProfileDesktop:
-		return "Low Profile Desktop"
-	case ChassisTypePizzaBox:
-		return "Pizza Box"
-	case ChassisTypeMiniTower:
-		return "Mini Tower"
-	case ChassisTypeTower:
-		return "Tower"
-	case ChassisTypePortable:
-		return "Portable"
-	case ChassisTypeLaptop:
-		return "Laptop"
-	case ChassisTypeNotebook:
-		return "Notebook"
-	case ChassisTypeHandHeld:
-		return "Hand Held"
-	case ChassisTypeDockingStation:
-		return "Docking Station"
-	case ChassisTypeAllInOne:
-		return "All In One"
-	case ChassisTypeSubNotebook:
-		return "Sub Notebook"
-	case ChassisTypeSpacesaving:
-		return "Space-saving"
-	case ChassisTypeLunchBox:
-		return "Lunch Box"
-	case ChassisTypeMainServerChassis:
-		return "Main Server Chassis"
-	case ChassisTypeExpansionChassis:
-		return "Expansion Chassis"
-	case ChassisTypeSubChassis:
-		return "Sub Chassis"
-	case ChassisTypeBusExpansionChassis:
-		return "Bus Expansion Chassis"
-	case ChassisTypePeripheralChassis:
-		return "Peripheral Chassis"
-	case ChassisTypeRAIDChassis:
-		return "RAID Chassis"
-	case ChassisTypeRackMountChassis:
-		return "Rack Mount Chassis"
-	case ChassisTypeSealedcasePC:
-		return "Sealed-case PC"
-	case ChassisTypeMultisystemChassis:
-		return "Multi-system"
-	case ChassisTypeCompactPCI:
-		return "CompactPCI"
-	case ChassisTypeAdvancedTCA:
-		return "AdvancedTCA"
-	case ChassisTypeBlade:
-		return "Blade"
-	case ChassisTypeBladeChassis:
-		return "Blade Chassis"
-	case ChassisTypeTablet:
-		return "Tablet"
-	case ChassisTypeConvertible:
-		return "Convertible"
-	case ChassisTypeDetachable:
-		return "Detachable"
-	case ChassisTypeIoTGateway:
-		return "IoT Gateway"
-	case ChassisTypeEmbeddedPC:
-		return "Embedded PC"
-	case ChassisTypeMiniPC:
-		return "Mini PC"
-	case ChassisTypeStickPC:
-		return "Stick PC"
+	idx := v&0x7f - 1
+	if int(idx) < len(chassisTypeStr) {
+		return chassisTypeStr[idx]
 	}
 	return fmt.Sprintf("%#x", uint8(v))
 }
@@ -267,16 +208,17 @@ const (
 	ChassisStateNonrecoverable ChassisState = 0x06 // Non-recoverable
 )
 
+var chassisStateStr = map[ChassisState]string{
+	ChassisStateOther:          "Other",
+	ChassisStateUnknown:        "Unknown",
+	ChassisStateSafe:           "Safe",
+	ChassisStateWarning:        "Warning",
+	ChassisStateCritical:       "Critical",
+	ChassisStateNonrecoverable: "Non-recoverable",
+}
+
 func (v ChassisState) String() string {
-	names := map[ChassisState]string{
-		ChassisStateOther:          "Other",
-		ChassisStateUnknown:        "Unknown",
-		ChassisStateSafe:           "Safe",
-		ChassisStateWarning:        "Warning",
-		ChassisStateCritical:       "Critical",
-		ChassisStateNonrecoverable: "Non-recoverable",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := chassisStateStr[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
@@ -294,15 +236,16 @@ const (
 	ChassisSecurityStatusExternalInterfaceEnabled   ChassisSecurityStatus = 0x05 // External interface enabled
 )
 
+var chassisSecurityStatusStr = map[ChassisSecurityStatus]string{
+	ChassisSecurityStatusOther:                      "Other",
+	ChassisSecurityStatusUnknown:                    "Unknown",
+	ChassisSecurityStatusNone:                       "None",
+	ChassisSecurityStatusExternalInterfaceLockedOut: "External Interface Locked Out",
+	ChassisSecurityStatusExternalInterfaceEnabled:   "External Interface Enabled",
+}
+
 func (v ChassisSecurityStatus) String() string {
-	names := map[ChassisSecurityStatus]string{
-		ChassisSecurityStatusOther:                      "Other",
-		ChassisSecurityStatusUnknown:                    "Unknown",
-		ChassisSecurityStatusNone:                       "None",
-		ChassisSecurityStatusExternalInterfaceLockedOut: "External Interface Locked Out",
-		ChassisSecurityStatusExternalInterfaceEnabled:   "External Interface Enabled",
-	}
-	if name, ok := names[v]; ok {
+	if name, ok := chassisSecurityStatusStr[v]; ok {
 		return name
 	}
 	return fmt.Sprintf("%#x", uint8(v))
@@ -316,4 +259,54 @@ func (v ChassisElementType) String() string {
 		return smbios.TableType(v & 0x7f).String()
 	}
 	return BoardType(v & 0x7f).String()
+}
+
+// ChassisContainedElements are defined by DSP0134 7.4.4.
+type ChassisContainedElements []ChassisContainedElement
+
+func (cec ChassisContainedElements) String() string {
+	lines := []string{fmt.Sprintf("Contained Elements: %d", len(cec))}
+	for _, e := range cec {
+		lines = append(lines, fmt.Sprintf("\t%s", e))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (cec ChassisContainedElements) str() string {
+	lines := []string{fmt.Sprintf("Contained Elements: %d", len(cec))}
+	for _, e := range cec {
+		lines = append(lines, fmt.Sprintf("\t\t%s", e))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// ParseField parses object handles as defined by DSP0134 Section 7.4.4.
+func (cec *ChassisContainedElements) ParseField(t *smbios.Table, off int) (int, error) {
+	num, err := t.GetByteAt(off)
+	if err != nil {
+		return off, err
+	}
+	off++
+
+	size, err := t.GetByteAt(off)
+	if err != nil {
+		return off, err
+	}
+	off++
+
+	if num == 0 && size == 0 {
+		return off, nil
+	}
+	if size != 3 {
+		return off, fmt.Errorf("%w: unexpected chassis contained element size %d, support 3", os.ErrInvalid, size)
+	}
+	for i := uint8(0); i < num; i++ {
+		var e ChassisContainedElement
+		if err := binary.Read(io.NewSectionReader(t, int64(off), 3), binary.LittleEndian, &e); err != nil {
+			return off, err
+		}
+		*cec = append(*cec, e)
+		off += 3
+	}
+	return off, nil
 }
