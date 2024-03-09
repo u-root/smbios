@@ -5,7 +5,9 @@
 package dmidecode
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -123,7 +125,6 @@ func TestBoardFeaturesString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.val.String()
-
 			if result != tt.want {
 				t.Errorf("BoardFeatures().String(): '%s', want '%s'", result, tt.want)
 			}
@@ -140,17 +141,16 @@ func TestBaseBoardInfoString(t *testing.T) {
 		{
 			name: "Fully populated",
 			val: BaseboardInfo{
-				Manufacturer:                   "Astria Porta",
-				Product:                        "Stargate",
-				Version:                        "1",
-				SerialNumber:                   "0a 0b 0c 0d 0e 0f 01 04",
-				AssetTag:                       "0a",
-				BoardFeatures:                  BoardFeaturesRequiresAtLeastOneDaughterBoard,
-				LocationInChassis:              "Free floating",
-				ChassisHandle:                  2, // for easy carrying around
-				BoardType:                      BoardTypeUnknown,
-				NumberOfContainedObjectHandles: 2,
-				ContainedObjectHandles:         []uint16{0xABCD, 0xE7E7},
+				Manufacturer:      "Astria Porta",
+				Product:           "Stargate",
+				Version:           "1",
+				SerialNumber:      "0a 0b 0c 0d 0e 0f 01 04",
+				AssetTag:          "0a",
+				BoardFeatures:     BoardFeaturesRequiresAtLeastOneDaughterBoard,
+				LocationInChassis: "Free floating",
+				ChassisHandle:     2, // for easy carrying around
+				BoardType:         BoardTypeUnknown,
+				ObjectHandles:     []uint16{0xABCD, 0xE7E7},
 			},
 			want: `Handle 0x0000, DMI type 0, 0 bytes
 BIOS Information
@@ -181,77 +181,112 @@ BIOS Information
 }
 
 func TestParseBaseboardInfo(t *testing.T) {
-	tests := []struct {
+	for _, tt := range []struct {
 		name  string
-		val   BaseboardInfo
-		table smbios.Table
-		want  error
+		table *smbios.Table
+		want  *BaseboardInfo
+		err   error
 	}{
 		{
 			name: "Invalid Type",
-			val:  BaseboardInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBIOSInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+				Data: []byte{
+					0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
 					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+					0x1a,
+				},
 			},
-			want: fmt.Errorf("invalid table type 0"),
+			err: ErrUnexpectedTableType,
 		},
 		{
 			name: "Required fields are missing",
-			val:  BaseboardInfo{},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBaseboardInfo,
 				},
 				Data: []byte{},
 			},
-			want: fmt.Errorf("required fields missing"),
-		},
-		{
-			name: "Error parsing structure",
-			val:  BaseboardInfo{},
-			table: smbios.Table{
-				Header: smbios.Header{
-					Type: smbios.TableTypeBaseboardInfo,
-				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
-			},
-			want: fmt.Errorf("error parsing structure"),
+			err: io.ErrUnexpectedEOF,
 		},
 		{
 			name: "Parse valid BaseboardInfo",
-			val: BaseboardInfo{
-				NumberOfContainedObjectHandles: 2,
-			},
-			table: smbios.Table{
+			table: &smbios.Table{
 				Header: smbios.Header{
 					Type: smbios.TableTypeBaseboardInfo,
 				},
-				Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-					0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-					0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-					0x1a},
+				Data: []byte{
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,       // board features
+					0x00,       // location in chassis
+					0x00, 0x00, // location
+					0x00, // board type
+					0x02, // number of handles
+					// handles
+					0x11, 0x12,
+					0x13, 0x14,
+				},
+			},
+			want: &BaseboardInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
+				},
+				ObjectHandles: ObjectHandles{
+					0x1211,
+					0x1413,
+				},
 			},
 		},
-	}
-
-	for _, tt := range tests {
+		{
+			name: "invalid handles",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
+				},
+				Data: []byte{
+					0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00,
+					0x02, // number of handles
+					// handles
+					0x11, 0x12,
+					0x13,
+				},
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			name: "no handles",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
+				},
+				Data: []byte{
+					0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, // number of handles
+				},
+			},
+			want: &BaseboardInfo{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBaseboardInfo,
+				},
+			},
+		},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			parseStruct := func(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
-				return 0, tt.want
+			got, err := ParseBaseboardInfo(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseBaseboardInfo = %v, want %v", err, tt.err)
 			}
-			_, err := parseBaseboardInfo(parseStruct, &tt.table)
-
-			if !checkError(err, tt.want) {
-				t.Errorf("parseBaseboardInfo(): '%v', want '%v'", err, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseBaseboardInfo =\n%v, want\n%v", got, tt.want)
 			}
 		})
 	}
