@@ -14,24 +14,39 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	flag "github.com/spf13/pflag"
-
 	"github.com/u-root/smbios"
 	"github.com/u-root/smbios/dmidecode"
 )
 
+type stringList []string
+
+// Set implements flag.Value.Set.
+func (s *stringList) Set(t string) error {
+	*s = append(*s, strings.Split(t, ",")...)
+	return nil
+}
+
+func (s *stringList) String() string {
+	return strings.Join(*s, ",")
+}
+
 var (
 	flagDumpBin  = flag.String("dump-bin", "", `Do not decode the entries, instead dump the DMI data to a file in binary form. The generated file is suitable to pass to --from-dump later.`)
 	flagFromDump = flag.String("from-dump", "", `Read the DMI data from a binary file previously generated using --dump-bin.`)
-	flagType     = flag.StringSliceP("type", "t", nil, `Only  display  the  entries of type TYPE. TYPE can be either a DMI type number, or a comma-separated list of type numbers, or a keyword from the following list: bios, system, baseboard, chassis, processor, memory, cache, connector, slot. If this option is used more than once, the set of displayed entries will be the union of all the given types. If TYPE is not provided or not valid, a list of all valid keywords is printed and dmidecode exits with an error.`)
-	// NB: When adding flags, update resetFlags in dmidecode_test.
+	flagType     []string
 )
+
+func init() {
+	flag.Var((*stringList)(&flagType), "type", `Only  display  the  entries of type TYPE. TYPE can be either a DMI type number, or a comma-separated list of type numbers, or a keyword from the following list: bios, system, baseboard, chassis, processor, memory, cache, connector, slot. If this option is used more than once, the set of displayed entries will be the union of all the given types. If TYPE is not provided or not valid, a list of all valid keywords is printed and dmidecode exits with an error.`)
+	flag.Var((*stringList)(&flagType), "t", "Alias for --type")
+}
 
 var typeGroups = map[string][]uint8{
 	"bios":      {0, 13},
@@ -112,7 +127,7 @@ func dumpBin(textOut io.Writer, entryData, tableData []byte, fileName string) *d
 }
 
 func dmiDecode(textOut io.Writer) *dmiDecodeError {
-	typeFilter, err := parseTypeFilter(*flagType)
+	typeFilter, err := parseTypeFilter(flagType)
 	if err != nil {
 		return &dmiDecodeError{code: 2, error: fmt.Errorf("invalid --type: %v", err)}
 	}
