@@ -5,8 +5,8 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 
 	"github.com/u-root/smbios"
 )
@@ -31,19 +31,15 @@ type SystemSlots struct {
 
 // ParseSystemSlots parses a generic smbios.Table into SystemSlots.
 func ParseSystemSlots(t *smbios.Table) (*SystemSlots, error) {
-	return parseSystemSlots(parseStruct, t)
-}
-
-func parseSystemSlots(parseFn parseStructure, t *smbios.Table) (*SystemSlots, error) {
 	if t.Type != smbios.TableTypeSystemSlots {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
-	if t.Len() < 0x11 {
-		return nil, errors.New("required fields missing")
+	if t.Len() < 0xb {
+		return nil, fmt.Errorf("%w: system slots table must be at least %d bytes", io.ErrUnexpectedEOF, 0xb)
 	}
 
 	ss := &SystemSlots{Table: *t}
-	_, err := parseFn(t, 0 /* off */, false /* complete */, ss)
+	_, err := parseStruct(t, 0 /* off */, false /* complete */, ss)
 	if err != nil {
 		return nil, err
 	}
