@@ -14,33 +14,26 @@ import (
 	"strings"
 	"testing"
 
-	flag "github.com/spf13/pflag"
+	"github.com/u-root/gobusybox/src/pkg/golang"
 )
 
-func resetFlags() {
-	*flagFromDump = ""
-	*flagType = nil
-}
-
-func testOutput(t *testing.T, dumpFile string, args []string, expectedOutFile string) {
+func testOutput(t *testing.T, dmidecode, dumpFile string, args []string, expectedOutFile string) {
 	t.Helper()
 
 	actualOutFile := fmt.Sprintf("%s.actual", expectedOutFile)
 	os.Remove(actualOutFile)
-	os.Args = []string{os.Args[0], "--from-dump", dumpFile}
-	os.Args = append(os.Args, args...)
-	flag.Parse()
-	defer resetFlags()
+
+	c := exec.Command(dmidecode, append([]string{"--from-dump", dumpFile}, args...)...)
 	out := &bytes.Buffer{}
-	if err := dmiDecode(out); err != nil {
-		t.Errorf("%+v %+v %+v: error: %v", dumpFile, args, expectedOutFile, err)
-		return
+	c.Stdout = out
+	if err := c.Run(); err != nil {
+		t.Fatal(err)
 	}
 	actualOut := out.Bytes()
+
 	expectedOut, err := os.ReadFile(expectedOutFile)
 	if err != nil {
-		t.Errorf("%+v %+v %+v: failed to load %s: %v", dumpFile, args, expectedOutFile, expectedOutFile, err)
-		return
+		t.Fatal(err)
 	}
 	if !bytes.Equal(actualOut, expectedOut) {
 		_ = os.WriteFile(actualOutFile, actualOut, 0o644)
@@ -55,15 +48,19 @@ func TestDMIDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("glob failed: %v", err)
 	}
+
+	bin := filepath.Join(t.TempDir(), "bb")
+	if err := golang.Default(golang.DisableCGO()).BuildDir("", bin, &golang.BuildOpts{ExtraArgs: []string{"-covermode=atomic"}}); err != nil {
+		t.Fatal(err)
+	}
+
 	for _, dumpFile := range bf {
 		txtFile := strings.TrimSuffix(dumpFile, ".bin") + ".txt"
-		testOutput(t, dumpFile, nil, txtFile)
+		testOutput(t, bin, dumpFile, nil, txtFile)
 	}
-}
 
-func TestDMIDecodeTypeFilters(t *testing.T) {
-	testOutput(t, "testdata/Asus-UX307LA.bin", []string{"-t", "system"}, "testdata/Asus-UX307LA.system.txt")
-	testOutput(t, "testdata/Asus-UX307LA.bin", []string{"-t", "1,131"}, "testdata/Asus-UX307LA.1_131.txt")
+	testOutput(t, bin, "testdata/Asus-UX307LA.bin", []string{"-t", "system"}, "testdata/Asus-UX307LA.system.txt")
+	testOutput(t, bin, "testdata/Asus-UX307LA.bin", []string{"-t", "1,131"}, "testdata/Asus-UX307LA.1_131.txt")
 }
 
 func testDumpBin(t *testing.T, entryData, expectedOutData []byte) {
