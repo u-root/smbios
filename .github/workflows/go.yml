@@ -83,7 +83,9 @@ jobs:
             go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Convert GOCOVERDIR coverage data
-        run: go tool covdata textfmt -i=gocov -o vmintcoverage.txt
+        run: |
+          go tool covdata textfmt -i=gocov -o vmintcoverage.txt
+          go tool covdata textfmt -i=cmd/dmidecode/cover -o cmdcoverage.txt
 
       - uses: codecov/codecov-action@v4
         env:

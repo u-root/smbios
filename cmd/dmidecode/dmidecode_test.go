@@ -17,29 +17,33 @@ import (
 	"github.com/u-root/gobusybox/src/pkg/golang"
 )
 
-func testOutput(t *testing.T, dmidecode, dumpFile string, args []string, expectedOutFile string) {
+func testOutput(t *testing.T, dmidecode, gocoverdir, dumpFile string, args []string, expectedOutFile string) {
 	t.Helper()
 
 	actualOutFile := fmt.Sprintf("%s.actual", expectedOutFile)
 	os.Remove(actualOutFile)
 
-	c := exec.Command(dmidecode, append([]string{"--from-dump", dumpFile}, args...)...)
-	out, err := c.CombinedOutput()
-	if err != nil {
-		t.Logf("out: %s", out)
-		t.Fatalf("run: %v", err)
-	}
+	t.Run("", func(t *testing.T) {
+		c := exec.Command(dmidecode, append([]string{"--from-dump", dumpFile}, args...)...)
+		var stdout, stderr bytes.Buffer
+		c.Stdout, c.Stderr = &stdout, &stderr
+		c.Env = append(os.Environ(), "GOCOVERDIR="+gocoverdir)
+		if err := c.Run(); err != nil {
+			t.Logf("out: %s", stderr.Bytes())
+			t.Fatalf("run: %v", err)
+		}
 
-	expectedOut, err := os.ReadFile(expectedOutFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(out, expectedOut) {
-		_ = os.WriteFile(actualOutFile, out, 0o644)
-		t.Errorf("%+v %+v %+v: output mismatch, see %s", dumpFile, args, expectedOutFile, actualOutFile)
-		diffOut, _ := exec.Command("diff", "-u", expectedOutFile, actualOutFile).CombinedOutput()
-		t.Errorf("%+v %+v %+v: diff:\n%s", dumpFile, args, expectedOutFile, string(diffOut))
-	}
+		expectedOut, err := os.ReadFile(expectedOutFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := stdout.Bytes(); !bytes.Equal(got, expectedOut) {
+			_ = os.WriteFile(actualOutFile, got, 0o644)
+			t.Errorf("%+v %+v %+v: output mismatch, see %s", dumpFile, args, expectedOutFile, actualOutFile)
+			diffOut, _ := exec.Command("diff", "-u", expectedOutFile, actualOutFile).CombinedOutput()
+			t.Errorf("%+v %+v %+v: diff:\n%s", dumpFile, args, expectedOutFile, string(diffOut))
+		}
+	})
 }
 
 func TestDMIDecode(t *testing.T) {
@@ -48,18 +52,25 @@ func TestDMIDecode(t *testing.T) {
 		t.Fatalf("glob failed: %v", err)
 	}
 
+	wd, _ := os.Getwd()
+	gocoverdir := filepath.Join(wd, "cover")
+	_ = os.RemoveAll(gocoverdir)
+	if err := os.MkdirAll(gocoverdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
 	bin := filepath.Join(t.TempDir(), "dmidecode")
-	if err := golang.Default(golang.DisableCGO()).BuildDir("", bin, &golang.BuildOpts{ExtraArgs: []string{"-cover", "-covermode=atomic"}}); err != nil {
+	if err := golang.Default(golang.DisableCGO()).BuildDir("", bin, &golang.BuildOpts{ExtraArgs: []string{"-covermode=atomic"}}); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, dumpFile := range bf {
 		txtFile := strings.TrimSuffix(dumpFile, ".bin") + ".txt"
-		testOutput(t, bin, dumpFile, nil, txtFile)
+		testOutput(t, bin, gocoverdir, dumpFile, nil, txtFile)
 	}
 
-	testOutput(t, bin, "testdata/Asus-UX307LA.bin", []string{"-t", "system"}, "testdata/Asus-UX307LA.system.txt")
-	testOutput(t, bin, "testdata/Asus-UX307LA.bin", []string{"-t", "1,131"}, "testdata/Asus-UX307LA.1_131.txt")
+	testOutput(t, bin, gocoverdir, "testdata/Asus-UX307LA.bin", []string{"-t", "system"}, "testdata/Asus-UX307LA.system.txt")
+	testOutput(t, bin, gocoverdir, "testdata/Asus-UX307LA.bin", []string{"-t", "1,131"}, "testdata/Asus-UX307LA.1_131.txt")
 }
 
 func testDumpBin(t *testing.T, entryData, expectedOutData []byte) {
