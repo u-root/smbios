@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/hugelgupf/vmtest v0.0.0-20240306161034-1a05e5dde725
 	github.com/spf13/pflag v1.0.5
+	github.com/u-root/gobusybox/src v0.0.0-20240225013946-a274a8d5d83a
 	github.com/u-root/u-root v0.14.0
 )
 
@@ -15,7 +16,6 @@ require (
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
-	github.com/u-root/gobusybox/src v0.0.0-20240225013946-a274a8d5d83a // indirect
 	github.com/u-root/mkuimage v0.0.0-20240225063926-11a3bcc79c2a // indirect
 	github.com/u-root/uio v0.0.0-20240209044354-b3d14b93376a // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
