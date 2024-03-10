@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	github.com/hugelgupf/vmtest v0.0.0-20240306161034-1a05e5dde725
-	github.com/spf13/pflag v1.0.5
 	github.com/u-root/gobusybox/src v0.0.0-20240225013946-a274a8d5d83a
 	github.com/u-root/u-root v0.14.0
 )

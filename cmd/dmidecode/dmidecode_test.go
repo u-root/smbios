@@ -24,19 +24,18 @@ func testOutput(t *testing.T, dmidecode, dumpFile string, args []string, expecte
 	os.Remove(actualOutFile)
 
 	c := exec.Command(dmidecode, append([]string{"--from-dump", dumpFile}, args...)...)
-	out := &bytes.Buffer{}
-	c.Stdout = out
-	if err := c.Run(); err != nil {
-		t.Fatal(err)
+	out, err := c.CombinedOutput()
+	if err != nil {
+		t.Logf("out: %s", out)
+		t.Fatalf("run: %v", err)
 	}
-	actualOut := out.Bytes()
 
 	expectedOut, err := os.ReadFile(expectedOutFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(actualOut, expectedOut) {
-		_ = os.WriteFile(actualOutFile, actualOut, 0o644)
+	if !bytes.Equal(out, expectedOut) {
+		_ = os.WriteFile(actualOutFile, out, 0o644)
 		t.Errorf("%+v %+v %+v: output mismatch, see %s", dumpFile, args, expectedOutFile, actualOutFile)
 		diffOut, _ := exec.Command("diff", "-u", expectedOutFile, actualOutFile).CombinedOutput()
 		t.Errorf("%+v %+v %+v: diff:\n%s", dumpFile, args, expectedOutFile, string(diffOut))
@@ -49,8 +48,8 @@ func TestDMIDecode(t *testing.T) {
 		t.Fatalf("glob failed: %v", err)
 	}
 
-	bin := filepath.Join(t.TempDir(), "bb")
-	if err := golang.Default(golang.DisableCGO()).BuildDir("", bin, &golang.BuildOpts{ExtraArgs: []string{"-covermode=atomic"}}); err != nil {
+	bin := filepath.Join(t.TempDir(), "dmidecode")
+	if err := golang.Default(golang.DisableCGO()).BuildDir("", bin, &golang.BuildOpts{ExtraArgs: []string{"-cover", "-covermode=atomic"}}); err != nil {
 		t.Fatal(err)
 	}
 
