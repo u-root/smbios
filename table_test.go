@@ -260,17 +260,10 @@ func TestParseTables(t *testing.T) {
 	}
 }
 
-func Test64GetByteAt(t *testing.T) {
+func TestGetByteAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data: []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -300,17 +293,10 @@ func Test64GetByteAt(t *testing.T) {
 	}
 }
 
-func Test64GetBytesAt(t *testing.T) {
+func TestGetBytesAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 16,
-			Handle: 0,
-		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data: []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -341,28 +327,21 @@ func Test64GetBytesAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetBytesAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !bytes.Equal(got, tt.want) {
 				t.Errorf("GetBytesAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetWordAt(t *testing.T) {
+func TestGetWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 16,
-			Handle: 0,
-		},
 		Data: []byte{
 			213, 0, 0, 11,
 			12, 0, 0, 0,
 			0, 0, 0, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -391,29 +370,22 @@ func Test64GetWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetDWordAt(t *testing.T) {
+func TestGetDWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data: []byte{
 			1, 0, 0, 0,
 			213, 0, 0, 11,
 			12, 13, 14, 0,
 			0, 0, 0, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -442,29 +414,22 @@ func Test64GetDWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetDWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetDWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetQWordAt(t *testing.T) {
+func TestGetQWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data: []byte{
 			1, 0, 0, 0,
 			213, 0, 0, 11,
 			12, 13, 14, 15,
 			16, 17, 18, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -494,24 +459,18 @@ func Test64GetQWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetQWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetQWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetStringAt(t *testing.T) {
+func TestGetStringAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
