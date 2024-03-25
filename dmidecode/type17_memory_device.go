@@ -89,6 +89,11 @@ func ParseMemoryDevice(t *smbios.Table) (*MemoryDevice, error) {
 	return md, nil
 }
 
+// Typ implements Table.Typ.
+func (md MemoryDevice) Typ() smbios.TableType {
+	return smbios.TableTypeMemoryDevice
+}
+
 // GetSizeBytes returns size of the memory device, in bytes.
 func (md *MemoryDevice) GetSizeBytes() uint64 {
 	switch md.Size {

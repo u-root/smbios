@@ -12,8 +12,6 @@ import (
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // ProcessorInfo is defined in DSP0134 x.x.
 type ProcessorInfo struct {
 	smbios.Header     `smbios:"-"`
@@ -59,6 +57,11 @@ func ParseProcessorInfo(t *smbios.Table) (*ProcessorInfo, error) {
 		return nil, err
 	}
 	return pi, nil
+}
+
+// Typ implements Table.Typ.
+func (pi ProcessorInfo) Typ() smbios.TableType {
+	return smbios.TableTypeProcessorInfo
 }
 
 // GetFamily returns the processor family, taken from the appropriate field.

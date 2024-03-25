@@ -7,6 +7,7 @@ package dmidecode
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/u-root/smbios"
@@ -42,6 +43,11 @@ func ParseBaseboardInfo(t *smbios.Table) (*BaseboardInfo, error) {
 		return nil, err
 	}
 	return bi, nil
+}
+
+// Typ implements Table.Typ.
+func (bi BaseboardInfo) Typ() smbios.TableType {
+	return smbios.TableTypeBaseboardInfo
 }
 
 func (bi *BaseboardInfo) String() string {
@@ -151,6 +157,19 @@ func (oh ObjectHandles) str() string {
 		lines = append(lines, fmt.Sprintf("\t\t0x%04X", h))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// WriteField writes a object handles as defined by DSP0134 Section 7.3.
+func (oh *ObjectHandles) WriteField(t *smbios.Table) (int, error) {
+	num := len(*oh)
+	if num > math.MaxUint8 {
+		return 0, fmt.Errorf("%w: too many object handles defined, can be maximum of 256", ErrInvalidArg)
+	}
+	t.WriteByte(uint8(num))
+	for _, handle := range *oh {
+		t.WriteWord(handle)
+	}
+	return 1 + 2*num, nil
 }
 
 // ParseField parses object handles as defined by DSP0134 Section 7.3.

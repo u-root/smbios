@@ -19,7 +19,7 @@ import (
 type Table struct {
 	Header `smbios:"-"`
 
-	Data    []byte   `smbios:"-"` // Structured part of the table.
+	Data    []byte   `smbios:"-"` // Structured part of the table, not including header.
 	Strings []string `smbios:"-"` // Strings section.
 }
 
@@ -28,9 +28,75 @@ var (
 	ErrTableNotFound = errors.New("table not found")
 )
 
+// MarshalBinary encodes the table content into binary.
+func (t *Table) MarshalBinary() ([]byte, error) {
+	return t.ToBytes(), nil
+}
+
+// ToBytes encodes the table content into binary.
+func (t *Table) ToBytes() []byte {
+	result := t.Header.ToBytes()
+	result = append(result, t.Data...)
+	for _, s := range t.Strings {
+		result = append(result, []byte(s)...)
+		result = append(result, 0x0)
+	}
+	if len(t.Strings) == 0 {
+		// If there's no strings, table ends with double 0.
+		result = append(result, 0x0)
+	}
+	result = append(result, 0x0)
+	return result
+}
+
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {
 	return len(t.Data) + headerLen
+}
+
+// WriteByte writes one byte to the table's data.
+func (t *Table) WriteByte(b uint8) {
+	t.Data = append(t.Data, b)
+}
+
+// WriteWord writes two little endian bytes to the table's data.
+func (t *Table) WriteWord(v uint16) {
+	t.Data = append(t.Data, 0, 0)
+	binary.LittleEndian.PutUint16(t.Data[len(t.Data)-2:], v)
+}
+
+// WriteDWord writes four little endian bytes to the table's data.
+func (t *Table) WriteDWord(v uint32) {
+	t.Data = append(t.Data, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(t.Data[len(t.Data)-4:], v)
+}
+
+// WriteQWord writes eight little endian bytes to the table's data.
+func (t *Table) WriteQWord(v uint64) {
+	t.Data = append(t.Data, 0, 0, 0, 0, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint64(t.Data[len(t.Data)-8:], v)
+}
+
+// WriteString writes a string index and appends the string to table.
+func (t *Table) WriteString(s string) {
+	if s == "" {
+		t.WriteByte(0)
+	} else {
+		t.Strings = append(t.Strings, s)
+		// strings are 1-indexed bytes.
+		t.WriteByte(uint8(len(t.Strings)))
+	}
+}
+
+// WriteBytes writes arbitrary bytes to the Table.
+func (t *Table) WriteBytes(v []byte) {
+	t.Data = append(t.Data, v...)
+}
+
+// Write writes arbitrary bytes to the Table.
+func (t *Table) Write(p []byte) (int, error) {
+	t.Data = append(t.Data, p...)
+	return len(p), nil
 }
 
 // GetByteAt returns a byte from the structured part at the specified offset.

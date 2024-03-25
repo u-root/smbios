@@ -45,6 +45,11 @@ func ParseCacheInfo(t *smbios.Table) (*CacheInfo, error) {
 	return ci, nil
 }
 
+// Typ implements Table.Typ.
+func (ci CacheInfo) Typ() smbios.TableType {
+	return smbios.TableTypeCacheInfo
+}
+
 func cacheSizeBytes2Or1(size1 uint16, size2 uint32) uint64 {
 	mul2 := uint64(1024)
 	if size2&0x80000000 != 0 {

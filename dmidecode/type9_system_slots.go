@@ -38,10 +38,15 @@ func ParseSystemSlots(t *smbios.Table) (*SystemSlots, error) {
 		return nil, fmt.Errorf("%w: system slots table must be at least %d bytes", io.ErrUnexpectedEOF, 0xb)
 	}
 
-	ss := &SystemSlots{Table: *t}
-	_, err := parseStruct(t, 0 /* off */, false /* complete */, ss)
+	s := &SystemSlots{Table: *t}
+	_, err := parseStruct(t, 0 /* off */, false /* complete */, s)
 	if err != nil {
 		return nil, err
 	}
-	return ss, nil
+	return s, nil
+}
+
+// Typ implements Table.Typ.
+func (s SystemSlots) Typ() smbios.TableType {
+	return smbios.TableTypeSystemSlots
 }

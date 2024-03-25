@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 
@@ -31,6 +32,11 @@ type ChassisInfo struct {
 	NumberOfPowerCords uint8                    // 12h
 	ContainedElements  ChassisContainedElements // 13h
 	SKUNumber          string                   // 15h + CEC * CERL
+}
+
+// Typ implements Table.Typ.
+func (ci ChassisInfo) Typ() smbios.TableType {
+	return smbios.TableTypeChassisInfo
 }
 
 // ChassisContainedElement is defined in DSP0134 7.4.4.
@@ -280,7 +286,28 @@ func (cec ChassisContainedElements) str() string {
 	return strings.Join(lines, "\n")
 }
 
-// ParseField parses object handles as defined by DSP0134 Section 7.4.4.
+// WriteField writes contained elements as defined by DSP0134 Section 7.4.4.
+func (cec *ChassisContainedElements) WriteField(t *smbios.Table) (int, error) {
+	num := len(*cec)
+	if num > math.MaxUint8 {
+		return 0, fmt.Errorf("%w: too many object handles defined, can be maximum of 256", ErrInvalidArg)
+	}
+	t.WriteByte(uint8(num))
+
+	if num == 0 {
+		t.WriteByte(0)
+		return 2, nil
+	}
+	t.WriteByte(3)
+	for _, el := range *cec {
+		if err := binary.Write(t, binary.LittleEndian, el); err != nil {
+			return 0, err
+		}
+	}
+	return 2 + 3*num, nil
+}
+
+// ParseField parses contained elements as defined by DSP0134 Section 7.4.4.
 func (cec *ChassisContainedElements) ParseField(t *smbios.Table, off int) (int, error) {
 	num, err := t.GetByteAt(off)
 	if err != nil {

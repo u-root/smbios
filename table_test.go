@@ -260,17 +260,10 @@ func TestParseTables(t *testing.T) {
 	}
 }
 
-func Test64GetByteAt(t *testing.T) {
+func TestGetByteAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data: []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -300,17 +293,10 @@ func Test64GetByteAt(t *testing.T) {
 	}
 }
 
-func Test64GetBytesAt(t *testing.T) {
+func TestGetBytesAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 16,
-			Handle: 0,
-		},
-		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
+		Data: []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -341,28 +327,21 @@ func Test64GetBytesAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetBytesAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !bytes.Equal(got, tt.want) {
 				t.Errorf("GetBytesAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetWordAt(t *testing.T) {
+func TestGetWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 16,
-			Handle: 0,
-		},
 		Data: []byte{
 			213, 0, 0, 11,
 			12, 0, 0, 0,
 			0, 0, 0, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -391,29 +370,22 @@ func Test64GetWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetDWordAt(t *testing.T) {
+func TestGetDWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data: []byte{
 			1, 0, 0, 0,
 			213, 0, 0, 11,
 			12, 13, 14, 0,
 			0, 0, 0, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -442,29 +414,22 @@ func Test64GetDWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetDWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetDWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetQWordAt(t *testing.T) {
+func TestGetQWordAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data: []byte{
 			1, 0, 0, 0,
 			213, 0, 0, 11,
 			12, 13, 14, 15,
 			16, 17, 18, 0,
 		},
-		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -494,24 +459,18 @@ func Test64GetQWordAt(t *testing.T) {
 			if !errors.Is(err, tt.err) {
 				t.Errorf("GetQWordAt = %v, want %v", err, tt.err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != tt.want {
 				t.Errorf("GetQWordAt = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test64GetStringAt(t *testing.T) {
+func TestGetStringAt(t *testing.T) {
 	testStruct := Table{
-		Header: Header{
-			Type:   TableTypeBIOSInfo,
-			Length: 20,
-			Handle: 0,
-		},
 		Data:    []byte{1, 0, 0, 0, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Strings: []string{"BIOS Boot Complete", "TestString #1"},
 	}
-
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -627,5 +586,97 @@ OEM-specific Type
 	}
 	if got := table.Len(); got != 14 {
 		t.Errorf("Wrong length: Got %d want %d", got, 14)
+	}
+}
+
+func TestTableMarshalBinary(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		table Table
+		want  []byte
+	}{
+		{
+			name: "full table",
+			table: Table{
+				Header: Header{
+					Type:   224,
+					Length: 14,
+					Handle: 0,
+				},
+				Data:    []byte{1, 153, 0, 3, 16, 1, 32, 2, 48, 3},
+				Strings: []string{"Memory Init Complete", "End of DXE Phase", "BIOS Boot Complete"},
+			},
+			want: []byte{
+				// Header and Data
+				224, 14, 0, 0,
+				1, 153, 0, 3, 16, 1, 32, 2, 48, 3,
+				// Strings
+				77, 101, 109, 111, 114, 121, 32, 73, 110, 105, 116, 32, 67, 111, 109, 112, 108, 101, 116, 101, 0, // Memory Init Complete
+				69, 110, 100, 32, 111, 102, 32, 68, 88, 69, 32, 80, 104, 97, 115, 101, 0, // End of DXE Phase
+				66, 73, 79, 83, 32, 66, 111, 111, 116, 32, 67, 111, 109, 112, 108, 101, 116, 101, 0, //  BIOS Boot Complete
+				0, // Table terminator
+			},
+		},
+		{
+			name: "NoString",
+			table: Table{
+				Header: Header{
+					Type:   224,
+					Length: 14,
+					Handle: 0,
+				},
+				Data: []byte{1, 153, 0, 3, 16, 1, 32, 2, 48, 3},
+			},
+			want: []byte{
+				// Header and Data
+				224, 14, 0, 0,
+				1, 153, 0, 3, 16, 1, 32, 2, 48, 3,
+				// Strings
+				0, // String terminator
+				0, // Table terminator
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.table.MarshalBinary()
+			if err != nil {
+				t.Errorf("MarshalBinary returned error: %v", err)
+			}
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("Wrong raw data: Got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTableWrite(t *testing.T) {
+	var tt Table
+	tt.WriteByte(1)
+	tt.WriteWord(0x0203)
+	tt.WriteDWord(0x04050607)
+	tt.WriteQWord(0x0102030405060708)
+	tt.WriteBytes([]byte{0, 1})
+	tt.WriteString("foo")
+	tt.WriteString("")
+	_, _ = tt.Write([]byte{0x1, 0x2})
+
+	want := []byte{
+		1,
+		0x03, 0x02,
+		0x07, 0x06, 0x05, 0x04,
+		0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+		0, 1,
+		0x1,
+		0,
+		0x1, 0x2,
+	}
+	if !reflect.DeepEqual(tt.Data, want) {
+		t.Errorf("Data = %#v, want %#v", tt.Data, want)
+	}
+	wantS := []string{
+		"foo",
+	}
+	if !reflect.DeepEqual(tt.Strings, wantS) {
+		t.Errorf("Strings = %#v, want %#v", tt.Strings, wantS)
 	}
 }

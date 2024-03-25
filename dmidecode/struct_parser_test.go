@@ -52,11 +52,13 @@ func TestParseStruct(t *testing.T) {
 		Off9  string
 		_     uint8 `smbios:"-"`
 		Off10 uint16
-		Off14 uint8 `smbios:"skip=2"`
+		Off12 uint8 `smbios:"default=0xf"`
 		_     uint8 `smbios:"-"`
-		Off15 uint8 `smbios:"skip=2,default=0x1"`
-		Off17 uint8 `smbios:"default=0xf"`
-		Off18 foobar
+		Off13 foobar
+	}
+	type withArray struct {
+		Off0 uint8
+		Off1 [4]byte
 	}
 
 	for _, tt := range []struct {
@@ -73,8 +75,7 @@ func TestParseStruct(t *testing.T) {
 					0xff,     // Off8
 					0x1,      // Off9
 					0x2, 0x1, // Off10
-					0xff, 0xff, // skipped
-					0x5, // Off14
+					0x5, // Off12
 				},
 				Strings: []string{
 					"foobar",
@@ -86,13 +87,21 @@ func TestParseStruct(t *testing.T) {
 				Off8:  0xff,
 				Off9:  "foobar",
 				Off10: 0x102,
-				Off14: 0x05,
-				Off15: 0x1,
-				Off17: 0x0f,
-				Off18: foobar{
+				Off12: 0x05,
+				Off13: foobar{
 					Foo: 0xe,
 				},
 			},
+		},
+		{
+			table: &smbios.Table{
+				Data: []byte{
+					0x1, // Off0
+				},
+			},
+			value: &withArray{},
+			want:  &withArray{Off0: 0x1},
+			err:   ErrInvalidArg,
 		},
 	} {
 		t.Run("", func(t *testing.T) {
@@ -122,7 +131,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 					Length: 32,
 				},
 				Data: []byte{
-					0x01, 0x00, 0x00, 0x00, // VendorID
+					'G', 'O', 'O', 'G', // VendorID
 					0x02,       // Major
 					0x03,       // Minor
 					0x01, 0x00, // FirmwareVersion1
@@ -136,7 +145,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			},
 			complete: false,
 			want: &TPMDevice{
-				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
+				VendorID:         [4]byte{'G', 'O', 'O', 'G'},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
 				FirmwareVersion1: 0x00020001,
@@ -154,7 +163,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 					Length: 16,
 				},
 				Data: []byte{
-					0x00, 0x00, 0x00, 0x00, // VendorID
+					'G', 'O', 'O', 'G', // VendorID
 					0x02,       // Major
 					0x03,       // Minor
 					0x01, 0x00, // FirmwareVersion1
@@ -167,7 +176,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			},
 			complete: true,
 			want: &TPMDevice{
-				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
+				VendorID:         [4]byte{'G', 'O', 'O', 'G'},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
 				FirmwareVersion1: 0x00020001,
@@ -190,5 +199,190 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			}
 		})
 	}
+}
 
+type toTableFoobar struct {
+	Foo uint8 `smbios:"default=0xe"`
+}
+type someToTableStruct struct {
+	Off0  uint64
+	Off8  uint8
+	Off9  string
+	_     uint8 `smbios:"-"`
+	Off10 uint16
+	_     uint8 `smbios:"-"`
+	Off12 uint8 `smbios:"default=0xf"`
+	Off13 toTableFoobar
+}
+
+func (someToTableStruct) Typ() smbios.TableType {
+	return smbios.TableTypeSystemInfo
+}
+
+type tableTooLong struct {
+	Off0 [257]byte
+}
+
+func (tableTooLong) Typ() smbios.TableType {
+	return smbios.TableTypeSystemInfo
+}
+
+func TestToTable(t *testing.T) {
+	for _, tt := range []struct {
+		value Table
+		err   error
+		want  *smbios.Table
+	}{
+		{
+			value: &someToTableStruct{
+				Off0:  0x01,
+				Off8:  0xff,
+				Off9:  "foobar",
+				Off10: 0x102,
+				Off12: 0x05,
+				Off13: toTableFoobar{
+					Foo: 0xe,
+				},
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeSystemInfo,
+					Length: 18,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x1, 0x0, 0x0, 0x0,
+					0x0, 0x0, 0x0, 0x0,
+					0xff,     // Off8
+					0x1,      // Off9
+					0x2, 0x1, // Off10
+					0x5, // Off11
+					0xe, // foobar
+				},
+				Strings: []string{
+					"foobar",
+				},
+			},
+		},
+		{
+			value: &tableTooLong{},
+			err:   ErrInvalidArg,
+		},
+		{
+			value: &BaseboardInfo{
+				ObjectHandles: ObjectHandles{
+					0x1211,
+					0x1413,
+				},
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeBaseboardInfo,
+					Length: 15 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,       // board features
+					0x00,       // location in chassis
+					0x00, 0x00, // location
+					0x00, // board type
+					0x02, // number of handles
+					// handles
+					0x11, 0x12,
+					0x13, 0x14,
+				},
+			},
+		},
+		{
+			value: &ChassisInfo{
+				Type:             0x01,
+				BootupState:      0x03,
+				PowerSupplyState: 0x03,
+				ThermalState:     0x03,
+				SecurityStatus:   0x03,
+				OEMInfo:          0x1234,
+				ContainedElements: []ChassisContainedElement{
+					{Type: 0x11, Min: 0x12, Max: 0x13},
+					{Type: 0x14, Min: 0x15, Max: 0x16},
+					{Type: 0x17, Min: 0x18, Max: 0x19},
+				},
+				SKUNumber: "SKU!",
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeChassisInfo,
+					Length: 27 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x01, // type
+					0x00,
+					0x00,
+					0x00,
+					0x03, 0x03, 0x03, // states
+					0x03,                   // security
+					0x34, 0x12, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num power
+					0x03, // num elements
+					0x03, // element size
+					0x11, 0x12, 0x13,
+					0x14, 0x15, 0x16,
+					0x17, 0x18, 0x19,
+					0x01, // SKU
+				},
+				Strings: []string{"SKU!"},
+			},
+		},
+		{
+			value: &ChassisInfo{
+				Type:             0x01,
+				BootupState:      0x03,
+				PowerSupplyState: 0x03,
+				ThermalState:     0x03,
+				SecurityStatus:   0x03,
+				OEMInfo:          0x1234,
+				SKUNumber:        "SKU!",
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeChassisInfo,
+					Length: 18 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x01, // type
+					0x00,
+					0x00,
+					0x00,
+					0x03, 0x03, 0x03, // states
+					0x03,                   // security
+					0x34, 0x12, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num power
+					0x00, // num elements
+					0x00, // element size
+					0x01, // SKU
+				},
+				Strings: []string{"SKU!"},
+			},
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			got, err := ToTable(tt.value, 0x1)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("toTable = %v, want %v", err, tt.err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("toTable = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

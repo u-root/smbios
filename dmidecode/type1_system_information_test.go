@@ -109,36 +109,6 @@ System Information
 	}
 }
 
-func TestUUIDParseField(t *testing.T) {
-	tests := []struct {
-		name string
-		val  smbios.Table
-		want string
-	}{
-		{
-			name: "Valid UUID",
-			val: smbios.Table{
-				Data: []byte{
-					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
-					0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
-				},
-			},
-			want: "03020100-0100-0302-0001-020300010203",
-		},
-	}
-
-	for _, tt := range tests {
-		uuid := UUID([16]byte{})
-		_, err := uuid.ParseField(&tt.val, 0)
-		if err != nil {
-			t.Errorf("ParseField(): '%v', want nil", err)
-		}
-		if uuid.String() != tt.want {
-			t.Errorf("ParseField(): '%s', want '%s'", uuid.String(), tt.want)
-		}
-	}
-}
-
 func TestParseSystemInfo(t *testing.T) {
 	for _, tt := range []struct {
 		table *smbios.Table

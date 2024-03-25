@@ -15,7 +15,7 @@ import (
 // TPMDevice is defined in DSP0134 7.44.
 type TPMDevice struct {
 	smbios.Header    `smbios:"-"`
-	VendorID         TPMDeviceVendorID        `smbios:"-,skip=4"` // 04h
+	VendorID         TPMDeviceVendorID        // 04h
 	MajorSpecVersion uint8                    // 08h
 	MinorSpecVersion uint8                    // 09h
 	FirmwareVersion1 uint32                   // 0Ah
@@ -37,9 +37,12 @@ func ParseTPMDevice(t *smbios.Table) (*TPMDevice, error) {
 	if _, err := parseStruct(t, 0 /* off */, false /* complete */, di); err != nil {
 		return nil, err
 	}
-	vid, _ := t.GetBytesAt(0, 4)
-	copy(di.VendorID[:], vid)
 	return di, nil
+}
+
+// Typ implements Table.Typ.
+func (di TPMDevice) Typ() smbios.TableType {
+	return smbios.TableTypeTPMDevice
 }
 
 func (di *TPMDevice) String() string {
