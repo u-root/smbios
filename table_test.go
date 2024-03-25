@@ -648,3 +648,35 @@ func TestTableMarshalBinary(t *testing.T) {
 		})
 	}
 }
+
+func TestTableWrite(t *testing.T) {
+	var tt Table
+	tt.WriteByte(1)
+	tt.WriteWord(0x0203)
+	tt.WriteDWord(0x04050607)
+	tt.WriteQWord(0x0102030405060708)
+	tt.WriteBytes([]byte{0, 1})
+	tt.WriteString("foo")
+	tt.WriteString("")
+	_, _ = tt.Write([]byte{0x1, 0x2})
+
+	want := []byte{
+		1,
+		0x03, 0x02,
+		0x07, 0x06, 0x05, 0x04,
+		0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+		0, 1,
+		0x1,
+		0,
+		0x1, 0x2,
+	}
+	if !reflect.DeepEqual(tt.Data, want) {
+		t.Errorf("Data = %#v, want %#v", tt.Data, want)
+	}
+	wantS := []string{
+		"foo",
+	}
+	if !reflect.DeepEqual(tt.Strings, wantS) {
+		t.Errorf("Strings = %#v, want %#v", tt.Strings, wantS)
+	}
+}
