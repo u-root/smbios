@@ -146,7 +146,7 @@ func (i *Info) GetSystemSlots() ([]*SystemSlots, error) {
 func (i *Info) GetMemoryDevices() ([]*MemoryDevice, error) {
 	var res []*MemoryDevice
 	for _, t := range i.Tables.TablesByType(smbios.TableTypeMemoryDevice) {
-		ci, err := NewMemoryDevice(t)
+		ci, err := ParseMemoryDevice(t)
 		if err != nil {
 			return nil, err
 		}

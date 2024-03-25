@@ -5,18 +5,16 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // MemoryDevice is defined in DSP0134 7.18.
 type MemoryDevice struct {
-	smbios.Table
+	smbios.Header                     `smbios:"-"`
 	PhysicalMemoryArrayHandle         uint16                              // 04h
 	MemoryErrorInfoHandle             uint16                              // 06h
 	TotalWidth                        uint16                              // 08h
@@ -75,15 +73,15 @@ var MemoryDeviceManufacturer = map[string]uint16{
 	"Viking":   0x4001,
 }
 
-// NewMemoryDevice parses a generic smbios.Table into MemoryDevice.
-func NewMemoryDevice(t *smbios.Table) (*MemoryDevice, error) {
+// ParseMemoryDevice parses a generic smbios.Table into MemoryDevice.
+func ParseMemoryDevice(t *smbios.Table) (*MemoryDevice, error) {
 	if t.Type != smbios.TableTypeMemoryDevice {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Len() < 0x15 {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: memory device table must be at least %d bytes", io.ErrUnexpectedEOF, 0x15)
 	}
-	md := &MemoryDevice{Table: *t}
+	md := &MemoryDevice{Header: t.Header}
 	_, err := parseStruct(t, 0 /* off */, false /* complete */, md)
 	if err != nil {
 		return nil, err
@@ -161,7 +159,7 @@ func (md *MemoryDevice) String() string {
 		fmt.Sprintf("Type: %s", md.Type),
 		fmt.Sprintf("Type Detail: %s", md.TypeDetail),
 	}
-	if md.Len() > 0x15 {
+	if md.Header.Length > 0x15 {
 		lines = append(lines,
 			fmt.Sprintf("Speed: %s", speedStr(md.Speed)),
 			fmt.Sprintf("Manufacturer: %s", smbiosStr(md.Manufacturer)),
@@ -170,17 +168,17 @@ func (md *MemoryDevice) String() string {
 			fmt.Sprintf("Part Number: %s", smbiosStr(md.PartNumber)),
 		)
 	}
-	if md.Len() > 0x1b {
+	if md.Header.Length > 0x1b {
 		rankStr := "Unknown"
 		if md.Attributes&0xf != 0 {
 			rankStr = fmt.Sprintf("%d", md.Attributes&0xf)
 		}
 		lines = append(lines, fmt.Sprintf("Rank: %s", rankStr))
 	}
-	if md.Len() > 0x1c {
+	if md.Header.Length > 0x1c {
 		lines = append(lines, fmt.Sprintf("Configured Memory Speed: %s", speedStr(md.ConfiguredSpeed)))
 	}
-	if md.Len() > 0x22 {
+	if md.Header.Length > 0x22 {
 		voltageStr := func(v uint16) string {
 			switch {
 			case v == 0:
@@ -197,7 +195,7 @@ func (md *MemoryDevice) String() string {
 			fmt.Sprintf("Configured Voltage: %s", voltageStr(md.ConfiguredVoltage)),
 		)
 	}
-	if md.Len() > 0x28 {
+	if md.Header.Length > 0x28 {
 		manufacturerIDStr := func(id uint16) string {
 			if id == 0 {
 				return "Unknown"
