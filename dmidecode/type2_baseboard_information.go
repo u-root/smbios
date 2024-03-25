@@ -45,6 +45,11 @@ func ParseBaseboardInfo(t *smbios.Table) (*BaseboardInfo, error) {
 	return bi, nil
 }
 
+// Typ implements Table.Typ.
+func (bi BaseboardInfo) Typ() smbios.TableType {
+	return smbios.TableTypeBaseboardInfo
+}
+
 func (bi *BaseboardInfo) String() string {
 	lines := []string{
 		bi.Header.String(),

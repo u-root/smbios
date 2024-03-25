@@ -40,6 +40,11 @@ func ParseTPMDevice(t *smbios.Table) (*TPMDevice, error) {
 	return di, nil
 }
 
+// Typ implements Table.Typ.
+func (di TPMDevice) Typ() smbios.TableType {
+	return smbios.TableTypeTPMDevice
+}
+
 func (di *TPMDevice) String() string {
 	lines := []string{
 		di.Header.String(),

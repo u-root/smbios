@@ -34,6 +34,11 @@ type ChassisInfo struct {
 	SKUNumber          string                   // 15h + CEC * CERL
 }
 
+// Typ implements Table.Typ.
+func (ci ChassisInfo) Typ() smbios.TableType {
+	return smbios.TableTypeChassisInfo
+}
+
 // ChassisContainedElement is defined in DSP0134 7.4.4.
 type ChassisContainedElement struct {
 	Type ChassisElementType // 00h

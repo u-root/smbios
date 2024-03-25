@@ -47,6 +47,11 @@ func ParseBIOSInfo(t *smbios.Table) (*BIOSInfo, error) {
 	return bi, nil
 }
 
+// Typ implements Table.Typ.
+func (bi BIOSInfo) Typ() smbios.TableType {
+	return smbios.TableTypeBIOSInfo
+}
+
 // ROMSizeBytes returns ROM size in bytes.
 func (bi *BIOSInfo) ROMSizeBytes() uint64 {
 	if bi.ROMSize != 0xff || bi.ExtendedROMSize == 0 {

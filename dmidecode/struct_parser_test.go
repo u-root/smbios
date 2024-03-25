@@ -201,38 +201,55 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 	}
 }
 
-func TestToTable(t *testing.T) {
-	type foobar struct {
-		Foo uint8 `smbios:"default=0xe"`
-	}
-	type someStruct struct {
-		Off0  uint64
-		Off8  uint8
-		Off9  string
-		_     uint8 `smbios:"-"`
-		Off10 uint16
-		_     uint8 `smbios:"-"`
-		Off11 uint8 `smbios:"default=0xf"`
-		Off12 foobar
-	}
+type toTableFoobar struct {
+	Foo uint8 `smbios:"default=0xe"`
+}
+type someToTableStruct struct {
+	Off0  uint64
+	Off8  uint8
+	Off9  string
+	_     uint8 `smbios:"-"`
+	Off10 uint16
+	_     uint8 `smbios:"-"`
+	Off12 uint8 `smbios:"default=0xf"`
+	Off13 toTableFoobar
+}
 
+func (someToTableStruct) Typ() smbios.TableType {
+	return smbios.TableTypeSystemInfo
+}
+
+type tableTooLong struct {
+	Off0 [257]byte
+}
+
+func (tableTooLong) Typ() smbios.TableType {
+	return smbios.TableTypeSystemInfo
+}
+
+func TestToTable(t *testing.T) {
 	for _, tt := range []struct {
-		value any
+		value Table
 		err   error
 		want  *smbios.Table
 	}{
 		{
-			value: &someStruct{
+			value: &someToTableStruct{
 				Off0:  0x01,
 				Off8:  0xff,
 				Off9:  "foobar",
 				Off10: 0x102,
-				Off11: 0x05,
-				Off12: foobar{
+				Off12: 0x05,
+				Off13: toTableFoobar{
 					Foo: 0xe,
 				},
 			},
 			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeSystemInfo,
+					Length: 18,
+					Handle: 0x1,
+				},
 				Data: []byte{
 					0x1, 0x0, 0x0, 0x0,
 					0x0, 0x0, 0x0, 0x0,
@@ -247,10 +264,14 @@ func TestToTable(t *testing.T) {
 				},
 			},
 		},
+		{
+			value: &tableTooLong{},
+			err:   ErrInvalidArg,
+		},
 	} {
 		t.Run("", func(t *testing.T) {
-			got := &smbios.Table{}
-			if _, err := toTable(got, tt.value); !errors.Is(err, tt.err) {
+			got, err := ToTable(tt.value, 0x1)
+			if !errors.Is(err, tt.err) {
 				t.Errorf("toTable = %v, want %v", err, tt.err)
 			}
 			if !reflect.DeepEqual(got, tt.want) {

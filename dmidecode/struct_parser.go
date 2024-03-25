@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -164,14 +165,38 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 	return off, nil
 }
 
-func toTable(t *smbios.Table, sp interface{}) (int, error) {
+// Table is an SMBIOS table.
+type Table interface {
+	Typ() smbios.TableType
+}
+
+const headerLen = 4
+
+// ToTable converts a struct to an smbios.Table.
+func ToTable(val Table, handle uint16) (*smbios.Table, error) {
+	t := smbios.Table{
+		Header: smbios.Header{
+			Type:   val.Typ(),
+			Handle: handle,
+		},
+	}
+	m, err := toTable(&t, val)
+	if err != nil {
+		return nil, err
+	}
+	if m+headerLen > math.MaxUint8 {
+		return nil, fmt.Errorf("%w: table is too long, got %d bytes, max is 256", ErrInvalidArg, m+headerLen)
+	}
+	t.Length = uint8(m + headerLen)
+	return &t, nil
+}
+
+func toTable(t *smbios.Table, sp any) (int, error) {
 	sv, ok := sp.(reflect.Value)
 	if !ok {
 		sv = reflect.Indirect(reflect.ValueOf(sp)) // must be a pointer to struct then, dereference it
 	}
 	svtn := sv.Type().Name()
-
-	//fmt.Printf("toTable t %s\n", svtn)
 
 	n := 0
 	for i := 0; i < sv.NumField(); i++ {
@@ -179,12 +204,11 @@ func toTable(t *smbios.Table, sp interface{}) (int, error) {
 		fv := sv.Field(i)
 		ft := fv.Type()
 		tags := f.Tag.Get(fieldTagKey)
-		//fmt.Printf("toTable XX %02Xh f %s t %s k %s %s\n", n, f.Name, f.Type.Name(), fv.Kind(), tags)
 		// Check tags first
 		ignore := false
 		for _, tag := range strings.Split(tags, ",") {
 			tp := strings.Split(tag, "=")
-			switch tp[0] {
+			switch tp[0] { //nolint
 			case "-":
 				ignore = true
 			}
@@ -214,7 +238,7 @@ func toTable(t *smbios.Table, sp interface{}) (int, error) {
 			t.WriteDWord(uint32(fv.Uint()))
 			n += 4
 		case reflect.Uint64:
-			t.WriteQWord(uint64(fv.Uint()))
+			t.WriteQWord(fv.Uint())
 			n += 8
 		case reflect.String:
 			t.WriteString(fv.String())

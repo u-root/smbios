@@ -39,6 +39,11 @@ func ParseIPMIDeviceInfo(t *smbios.Table) (*IPMIDeviceInfo, error) {
 	return di, nil
 }
 
+// Typ implements Table.Typ.
+func (di IPMIDeviceInfo) Typ() smbios.TableType {
+	return smbios.TableTypeIPMIDeviceInfo
+}
+
 func (di *IPMIDeviceInfo) String() string {
 	nvs := "Not Present"
 	if di.NVStorageDeviceAddress != 0xff {

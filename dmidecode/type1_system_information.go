@@ -41,6 +41,11 @@ func ParseSystemInfo(t *smbios.Table) (*SystemInfo, error) {
 	return si, nil
 }
 
+// Typ implements Table.Typ.
+func (si SystemInfo) Typ() smbios.TableType {
+	return smbios.TableTypeSystemInfo
+}
+
 func (si *SystemInfo) String() string {
 	lines := []string{
 		si.Header.String(),
