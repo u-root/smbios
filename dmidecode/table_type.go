@@ -36,7 +36,7 @@ func ParseTypedTable(t *smbios.Table) (fmt.Stringer, error) {
 	case smbios.TableTypeIPMIDeviceInfo: // 38
 		return ParseIPMIDeviceInfo(t)
 	case smbios.TableTypeTPMDevice: // 43
-		return NewTPMDevice(t)
+		return ParseTPMDevice(t)
 	case smbios.TableTypeInactive: // 126
 		return NewInactiveTable(t)
 	case smbios.TableTypeEndOfTable: // 127
