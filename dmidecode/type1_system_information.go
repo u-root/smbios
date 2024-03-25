@@ -41,16 +41,6 @@ func ParseSystemInfo(t *smbios.Table) (*SystemInfo, error) {
 	return si, nil
 }
 
-// ParseField parses UUD field within a table.
-func (u *UUID) ParseField(t *smbios.Table, off int) (int, error) {
-	ub, err := t.GetBytesAt(off, 16)
-	if err != nil {
-		return off, err
-	}
-	copy(u[:], ub)
-	return off + 16, nil
-}
-
 func (si *SystemInfo) String() string {
 	lines := []string{
 		si.Header.String(),

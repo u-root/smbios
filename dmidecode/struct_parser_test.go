@@ -52,11 +52,13 @@ func TestParseStruct(t *testing.T) {
 		Off9  string
 		_     uint8 `smbios:"-"`
 		Off10 uint16
-		Off14 uint8 `smbios:"skip=2"`
+		Off12 uint8 `smbios:"default=0xf"`
 		_     uint8 `smbios:"-"`
-		Off15 uint8 `smbios:"skip=2,default=0x1"`
-		Off17 uint8 `smbios:"default=0xf"`
-		Off18 foobar
+		Off13 foobar
+	}
+	type withArray struct {
+		Off0 uint8
+		Off1 [4]byte
 	}
 
 	for _, tt := range []struct {
@@ -73,8 +75,7 @@ func TestParseStruct(t *testing.T) {
 					0xff,     // Off8
 					0x1,      // Off9
 					0x2, 0x1, // Off10
-					0xff, 0xff, // skipped
-					0x5, // Off14
+					0x5, // Off12
 				},
 				Strings: []string{
 					"foobar",
@@ -86,13 +87,21 @@ func TestParseStruct(t *testing.T) {
 				Off8:  0xff,
 				Off9:  "foobar",
 				Off10: 0x102,
-				Off14: 0x05,
-				Off15: 0x1,
-				Off17: 0x0f,
-				Off18: foobar{
+				Off12: 0x05,
+				Off13: foobar{
 					Foo: 0xe,
 				},
 			},
+		},
+		{
+			table: &smbios.Table{
+				Data: []byte{
+					0x1, // Off0
+				},
+			},
+			value: &withArray{},
+			want:  &withArray{Off0: 0x1},
+			err:   ErrInvalidArg,
 		},
 	} {
 		t.Run("", func(t *testing.T) {
@@ -122,7 +131,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 					Length: 32,
 				},
 				Data: []byte{
-					0x01, 0x00, 0x00, 0x00, // VendorID
+					'G', 'O', 'O', 'G', // VendorID
 					0x02,       // Major
 					0x03,       // Minor
 					0x01, 0x00, // FirmwareVersion1
@@ -136,7 +145,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			},
 			complete: false,
 			want: &TPMDevice{
-				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
+				VendorID:         [4]byte{'G', 'O', 'O', 'G'},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
 				FirmwareVersion1: 0x00020001,
@@ -154,7 +163,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 					Length: 16,
 				},
 				Data: []byte{
-					0x00, 0x00, 0x00, 0x00, // VendorID
+					'G', 'O', 'O', 'G', // VendorID
 					0x02,       // Major
 					0x03,       // Minor
 					0x01, 0x00, // FirmwareVersion1
@@ -167,7 +176,7 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			},
 			complete: true,
 			want: &TPMDevice{
-				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
+				VendorID:         [4]byte{'G', 'O', 'O', 'G'},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
 				FirmwareVersion1: 0x00020001,

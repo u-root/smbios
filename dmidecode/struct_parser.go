@@ -49,9 +49,6 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 			switch tp[0] {
 			case "-":
 				ignore = true
-			case "skip":
-				numBytes, _ := strconv.Atoi(tp[1])
-				off += numBytes
 			}
 		}
 		if ignore {
@@ -83,6 +80,11 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 			v, _ := t.GetStringAt(off)
 			fv.SetString(v)
 			off++
+		case reflect.Array:
+			v, err := t.GetBytesAt(off, fv.Len())
+			reflect.Copy(fv, reflect.ValueOf(v))
+			verr = err
+			off += fv.Len()
 		default:
 			if reflect.PtrTo(ft).Implements(fieldParserInterfaceType) {
 				off, err = fv.Addr().Interface().(fieldParser).ParseField(t, off)
@@ -125,9 +127,6 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 			switch tp[0] {
 			case "-":
 				ignore = true
-			case "skip":
-				numBytes, _ := strconv.Atoi(tp[1])
-				off += numBytes
 			case "default":
 				defValue, _ = strconv.ParseUint(tp[1], 0, 64)
 			}
@@ -139,6 +138,10 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			fv.SetUint(defValue)
 			off += int(ft.Size())
+
+		case reflect.Array:
+			return off, fmt.Errorf("%w: array does not support default values", ErrInvalidArg)
+
 		case reflect.Struct:
 			off, err := parseStruct(t, off, false /* complete */, fv)
 			if err != nil {
