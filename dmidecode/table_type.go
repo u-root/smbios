@@ -32,7 +32,7 @@ func ParseTypedTable(t *smbios.Table) (fmt.Stringer, error) {
 	case smbios.TableTypeSystemSlots: // 9
 		return ParseSystemSlots(t)
 	case smbios.TableTypeMemoryDevice: // 17
-		return NewMemoryDevice(t)
+		return ParseMemoryDevice(t)
 	case smbios.TableTypeIPMIDeviceInfo: // 38
 		return ParseIPMIDeviceInfo(t)
 	case smbios.TableTypeTPMDevice: // 43

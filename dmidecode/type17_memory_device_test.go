@@ -5,6 +5,9 @@
 package dmidecode
 
 import (
+	"errors"
+	"io"
+	"reflect"
 	"testing"
 
 	"github.com/u-root/smbios"
@@ -282,9 +285,8 @@ BIOS Information
 		{
 			name: "Metadata",
 			MemDev: MemoryDevice{
-				Table: smbios.Table{
-					Data: []byte{0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-						0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15},
+				Header: smbios.Header{
+					Length: 22,
 				},
 				MemoryErrorInfoHandle: 0xfffe,
 				DeviceSet:             0xfe,
@@ -295,7 +297,7 @@ BIOS Information
 				AssetTag:              "#354432",
 				PartNumber:            "1",
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 22 bytes
 BIOS Information
 	Array Handle: 0x0000
 	Error Information Handle: Not Provided
@@ -317,11 +319,8 @@ BIOS Information
 		{
 			name: "Voltage and Speed",
 			MemDev: MemoryDevice{
-				Table: smbios.Table{
-					Data: []byte{0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-						0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
-						0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d,
-						0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27},
+				Header: smbios.Header{
+					Length: 36,
 				},
 				MemoryErrorInfoHandle: 0xfffe,
 				DeviceSet:             0xfe,
@@ -337,7 +336,7 @@ BIOS Information
 				MaximumVoltage:        0x0064,
 				ConfiguredVoltage:     0x2000,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 36 bytes
 BIOS Information
 	Array Handle: 0x0000
 	Error Information Handle: Not Provided
@@ -364,12 +363,8 @@ BIOS Information
 		{
 			name: "Size > 0x28",
 			MemDev: MemoryDevice{
-				Table: smbios.Table{
-					Data: []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-						0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
-						0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d,
-						0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-						0x28, 0x29},
+				Header: smbios.Header{
+					Length: 42,
 				},
 				MemoryErrorInfoHandle:             0xfffe,
 				DeviceSet:                         0xfe,
@@ -395,7 +390,7 @@ BIOS Information
 				CacheSize:                         0x00001000,
 				LogicalSize:                       0x00001000,
 			},
-			want: `Handle 0x0000, DMI type 0, 0 bytes
+			want: `Handle 0x0000, DMI type 0, 42 bytes
 BIOS Information
 	Array Handle: 0x0000
 	Error Information Handle: Not Provided
@@ -437,6 +432,82 @@ BIOS Information
 			got := tt.MemDev.String()
 			if got != tt.want {
 				t.Errorf("MemoryDevice.String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseMemoryDevice(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		table *smbios.Table
+		want  *MemoryDevice
+		err   error
+	}{
+		{
+			name: "Invalid Type",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeBIOSInfo,
+				},
+			},
+			err: ErrUnexpectedTableType,
+		},
+		{
+			name: "Required fields are missing",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeMemoryDevice,
+				},
+				Data: []byte{},
+			},
+			err: io.ErrUnexpectedEOF,
+		},
+		{
+			name: "Parse valid MemoryDevice",
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type: smbios.TableTypeMemoryDevice,
+				},
+				Data: []byte{
+					0x01, 0x02,
+					0x03, 0x04,
+					0x05, 0x06,
+					0x07, 0x08,
+					0x09, 0x0a,
+					0x1,
+					0x2,
+					0x0,
+					0x0,
+					0x2,
+					0x3, 0x4,
+				},
+			},
+			want: &MemoryDevice{
+				Header: smbios.Header{
+					Type: smbios.TableTypeMemoryDevice,
+				},
+				PhysicalMemoryArrayHandle: 0x0201,
+				MemoryErrorInfoHandle:     0x0403,
+				TotalWidth:                0x0605,
+				DataWidth:                 0x0807,
+				Size:                      0x0a09,
+				FormFactor:                0x1,
+				DeviceSet:                 0x2,
+				DeviceLocator:             "",
+				BankLocator:               "",
+				Type:                      0x2,
+				TypeDetail:                0x0403,
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseMemoryDevice(tt.table)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("ParseMemoryDevice = %v, want %v", err, tt.err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseMemoryDevice =\n%v, want\n%v", got, tt.want)
 			}
 		})
 	}
