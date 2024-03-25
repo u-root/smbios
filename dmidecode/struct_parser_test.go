@@ -268,6 +268,112 @@ func TestToTable(t *testing.T) {
 			value: &tableTooLong{},
 			err:   ErrInvalidArg,
 		},
+		{
+			value: &BaseboardInfo{
+				ObjectHandles: ObjectHandles{
+					0x1211,
+					0x1413,
+				},
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeBaseboardInfo,
+					Length: 15 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,
+					0x00,       // board features
+					0x00,       // location in chassis
+					0x00, 0x00, // location
+					0x00, // board type
+					0x02, // number of handles
+					// handles
+					0x11, 0x12,
+					0x13, 0x14,
+				},
+			},
+		},
+		{
+			value: &ChassisInfo{
+				Type:             0x01,
+				BootupState:      0x03,
+				PowerSupplyState: 0x03,
+				ThermalState:     0x03,
+				SecurityStatus:   0x03,
+				OEMInfo:          0x1234,
+				ContainedElements: []ChassisContainedElement{
+					{Type: 0x11, Min: 0x12, Max: 0x13},
+					{Type: 0x14, Min: 0x15, Max: 0x16},
+					{Type: 0x17, Min: 0x18, Max: 0x19},
+				},
+				SKUNumber: "SKU!",
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeChassisInfo,
+					Length: 27 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x01, // type
+					0x00,
+					0x00,
+					0x00,
+					0x03, 0x03, 0x03, // states
+					0x03,                   // security
+					0x34, 0x12, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num power
+					0x03, // num elements
+					0x03, // element size
+					0x11, 0x12, 0x13,
+					0x14, 0x15, 0x16,
+					0x17, 0x18, 0x19,
+					0x01, // SKU
+				},
+				Strings: []string{"SKU!"},
+			},
+		},
+		{
+			value: &ChassisInfo{
+				Type:             0x01,
+				BootupState:      0x03,
+				PowerSupplyState: 0x03,
+				ThermalState:     0x03,
+				SecurityStatus:   0x03,
+				OEMInfo:          0x1234,
+				SKUNumber:        "SKU!",
+			},
+			want: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeChassisInfo,
+					Length: 18 + 4,
+					Handle: 0x1,
+				},
+				Data: []byte{
+					0x00,
+					0x01, // type
+					0x00,
+					0x00,
+					0x00,
+					0x03, 0x03, 0x03, // states
+					0x03,                   // security
+					0x34, 0x12, 0x00, 0x00, // oem info
+					0x00, // height
+					0x00, // num power
+					0x00, // num elements
+					0x00, // element size
+					0x01, // SKU
+				},
+				Strings: []string{"SKU!"},
+			},
+		},
 	} {
 		t.Run("", func(t *testing.T) {
 			got, err := ToTable(tt.value, 0x1)
