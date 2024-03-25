@@ -14,16 +14,6 @@ import (
 	"github.com/u-root/smbios"
 )
 
-func checkError(got error, want error) bool {
-	if got != nil && want != nil {
-		if got.Error() == want.Error() {
-			return true
-		}
-	}
-
-	return errors.Is(got, want)
-}
-
 type UnknownTypes struct {
 	smbios.Table
 	SupportedField   uint64
