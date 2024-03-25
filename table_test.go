@@ -629,3 +629,63 @@ OEM-specific Type
 		t.Errorf("Wrong length: Got %d want %d", got, 14)
 	}
 }
+
+func TestTableMarshalBinary(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		table Table
+		want  []byte
+	}{
+		{
+			name: "full table",
+			table: Table{
+				Header: Header{
+					Type:   224,
+					Length: 14,
+					Handle: 0,
+				},
+				Data:    []byte{1, 153, 0, 3, 16, 1, 32, 2, 48, 3},
+				Strings: []string{"Memory Init Complete", "End of DXE Phase", "BIOS Boot Complete"},
+			},
+			want: []byte{
+				// Header and Data
+				224, 14, 0, 0,
+				1, 153, 0, 3, 16, 1, 32, 2, 48, 3,
+				// Strings
+				77, 101, 109, 111, 114, 121, 32, 73, 110, 105, 116, 32, 67, 111, 109, 112, 108, 101, 116, 101, 0, // Memory Init Complete
+				69, 110, 100, 32, 111, 102, 32, 68, 88, 69, 32, 80, 104, 97, 115, 101, 0, // End of DXE Phase
+				66, 73, 79, 83, 32, 66, 111, 111, 116, 32, 67, 111, 109, 112, 108, 101, 116, 101, 0, //  BIOS Boot Complete
+				0, // Table terminator
+			},
+		},
+		{
+			name: "NoString",
+			table: Table{
+				Header: Header{
+					Type:   224,
+					Length: 14,
+					Handle: 0,
+				},
+				Data: []byte{1, 153, 0, 3, 16, 1, 32, 2, 48, 3},
+			},
+			want: []byte{
+				// Header and Data
+				224, 14, 0, 0,
+				1, 153, 0, 3, 16, 1, 32, 2, 48, 3,
+				// Strings
+				0, // String terminator
+				0, // Table terminator
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.table.MarshalBinary()
+			if err != nil {
+				t.Errorf("MarshalBinary returned error: %v", err)
+			}
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("Wrong raw data: Got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

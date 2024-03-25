@@ -19,7 +19,7 @@ import (
 type Table struct {
 	Header `smbios:"-"`
 
-	Data    []byte   `smbios:"-"` // Structured part of the table.
+	Data    []byte   `smbios:"-"` // Structured part of the table, not including header.
 	Strings []string `smbios:"-"` // Strings section.
 }
 
@@ -27,6 +27,27 @@ type Table struct {
 var (
 	ErrTableNotFound = errors.New("table not found")
 )
+
+// MarshalBinary encodes the table content into binary.
+func (t *Table) MarshalBinary() ([]byte, error) {
+	return t.ToBytes(), nil
+}
+
+// ToBytes encodes the table content into binary.
+func (t *Table) ToBytes() []byte {
+	result := t.Header.ToBytes()
+	result = append(result, t.Data...)
+	for _, s := range t.Strings {
+		result = append(result, []byte(s)...)
+		result = append(result, 0x0)
+	}
+	if len(t.Strings) == 0 {
+		// If there's no strings, table ends with double 0.
+		result = append(result, 0x0)
+	}
+	result = append(result, 0x0)
+	return result
+}
 
 // Len returns length of the structured part of the table.
 func (t *Table) Len() int {
