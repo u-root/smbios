@@ -5,9 +5,8 @@
 package dmidecode
 
 import (
-	"encoding/binary"
 	"errors"
-	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -120,28 +119,33 @@ func TestParseStruct(t *testing.T) {
 func TestParseStructWithTPMDevice(t *testing.T) {
 	tests := []struct {
 		name     string
-		buffer   []byte
-		strings  []string
+		table    *smbios.Table
 		complete bool
-		want     TPMDevice
-		wantErr  error
+		want     *TPMDevice
+		err      error
 	}{
 		{
 			name: "Type43TPMDevice",
-			buffer: []byte{
-				0x00, 0x00, 0x00, 0x00, // VendorID
-				0x02,       // Major
-				0x03,       // Minor
-				0x01, 0x00, // FirmwareVersion1
-				0x02, 0x00, // FirmwareVersion1
-				0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
-				0x01,                   // String Index
-				1 << 3,                 // Characteristics
-				0x78, 0x56, 0x34, 0x12, // OEMDefined
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeTPMDevice,
+					Length: 32,
+				},
+				Data: []byte{
+					0x01, 0x00, 0x00, 0x00, // VendorID
+					0x02,       // Major
+					0x03,       // Minor
+					0x01, 0x00, // FirmwareVersion1
+					0x02, 0x00, // FirmwareVersion1
+					0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
+					0x01,                                             // String Index
+					1 << 3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Characteristics
+					0x78, 0x56, 0x34, 0x12, // OEMDefined
+				},
+				Strings: []string{"Test TPM"},
 			},
-			strings:  []string{"Test TPM"},
 			complete: false,
-			want: TPMDevice{
+			want: &TPMDevice{
 				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
@@ -151,95 +155,48 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 				Characteristics:  TPMDeviceCharacteristicsFamilyConfigurableViaFirmwareUpdate,
 				OEMDefined:       0x12345678,
 			},
-			wantErr: nil,
 		},
 		{
 			name: "Type43TPMDevice Incomplete",
-			buffer: []byte{
-				0x00, 0x00, 0x00, 0x00, // VendorID
-				0x02,       // Major
-				0x03,       // Minor
-				0x01, 0x00, // FirmwareVersion1
-				0x02, 0x00, // FirmwareVersion1
-				0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
-				0x01,   // String Index
-				1 << 3, // Characteristics
+			table: &smbios.Table{
+				Header: smbios.Header{
+					Type:   smbios.TableTypeTPMDevice,
+					Length: 16,
+				},
+				Data: []byte{
+					0x00, 0x00, 0x00, 0x00, // VendorID
+					0x02,       // Major
+					0x03,       // Minor
+					0x01, 0x00, // FirmwareVersion1
+					0x02, 0x00, // FirmwareVersion1
+					0x00, 0x00, 0x00, 0x00, // FirmwareVersion2
+					0x01,   // String Index
+					1 << 3, // Characteristics
+				},
+				Strings: []string{"Test TPM"},
 			},
-			strings:  []string{"Test TPM"},
 			complete: true,
-			want: TPMDevice{
+			want: &TPMDevice{
 				VendorID:         [4]byte{0x00, 0x00, 0x00, 0x00},
 				MajorSpecVersion: 2,
 				MinorSpecVersion: 3,
 				FirmwareVersion1: 0x00020001,
 				FirmwareVersion2: 0x00000000,
 				Description:      "Test TPM",
-				Characteristics:  TPMDeviceCharacteristicsFamilyConfigurableViaFirmwareUpdate,
-				OEMDefined:       0x12345678,
 			},
-			wantErr: fmt.Errorf("TPMDevice incomplete, got 8 of 9 fields"),
+			err: io.ErrUnexpectedEOF,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			table := smbios.Table{
-				Data:    tt.buffer,
-				Strings: tt.strings,
+			got := &TPMDevice{}
+			_, err := parseStruct(tt.table, 0, tt.complete, got)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("parseStruct() = %v want %v", err, tt.err)
 			}
-			TPMDev := &TPMDevice{
-				Table: table,
-			}
-
-			// We need to modify tt.want with runtime data
-			tt.want.Table = smbios.Table{
-				Header: smbios.Header{
-					Type:   smbios.TableType(tt.buffer[0]),
-					Length: tt.buffer[1],
-					Handle: binary.BigEndian.Uint16([]byte{tt.buffer[3], tt.buffer[2]}),
-				},
-				Data:    tt.buffer,
-				Strings: tt.strings,
-			}
-
-			off, err := parseStruct(&table, 0, tt.complete, TPMDev)
-			if err != tt.wantErr {
-				if !strings.Contains(err.Error(), tt.wantErr.Error()) {
-					t.Errorf("parseStruct() = %d, '%v' want '%v'", off, err, tt.wantErr)
-				}
-			}
-			if tt.wantErr == nil {
-				if TPMDev.VendorID != tt.want.VendorID {
-					t.Errorf("parseStruct().VendorID = %q, want %q", TPMDev.VendorID, tt.want.VendorID)
-				}
-
-				if TPMDev.MajorSpecVersion != tt.want.MajorSpecVersion {
-					t.Errorf("parseStruct().MajorSpecVersion = %q, want %q", TPMDev.MajorSpecVersion, tt.want.MajorSpecVersion)
-				}
-
-				if TPMDev.MinorSpecVersion != tt.want.MinorSpecVersion {
-					t.Errorf("parseStruct().MinorSpecVersion = %q, want %q", TPMDev.MinorSpecVersion, tt.want.MinorSpecVersion)
-				}
-
-				if TPMDev.FirmwareVersion1 != tt.want.FirmwareVersion1 {
-					t.Errorf("parseStruct().FirmwareVersion1 = %q, want %q", TPMDev.FirmwareVersion1, tt.want.FirmwareVersion1)
-				}
-
-				if TPMDev.FirmwareVersion2 != tt.want.FirmwareVersion2 {
-					t.Errorf("parseStruct().FirmwareVersion2 = %q, want %q", TPMDev.FirmwareVersion2, tt.want.FirmwareVersion2)
-				}
-
-				if TPMDev.Description != tt.want.Description {
-					t.Errorf("parseStruct().Description = %q, want %q", TPMDev.Description, tt.want.Description)
-				}
-
-				if TPMDev.Characteristics != tt.want.Characteristics {
-					t.Errorf("parseStruct().Characteristics = %q, want %q", TPMDev.Characteristics, tt.want.Characteristics)
-				}
-
-				if TPMDev.OEMDefined != tt.want.OEMDefined {
-					t.Errorf("parseStruct().OEMDefined = %q, want %q", TPMDev.OEMDefined, tt.want.OEMDefined)
-				}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseStruct() =\n%v want\n%v", got, tt.want)
 			}
 		})
 	}

@@ -172,7 +172,7 @@ func (i *Info) GetIPMIDeviceInfo() ([]*IPMIDeviceInfo, error) {
 func (i *Info) GetTPMDevices() ([]*TPMDevice, error) {
 	var res []*TPMDevice
 	for _, t := range i.Tables.TablesByType(smbios.TableTypeTPMDevice) {
-		d, err := NewTPMDevice(t)
+		d, err := ParseTPMDevice(t)
 		if err != nil {
 			return nil, err
 		}
