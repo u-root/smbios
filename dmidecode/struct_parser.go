@@ -5,6 +5,7 @@
 package dmidecode
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -12,6 +13,11 @@ import (
 	"strings"
 
 	"github.com/u-root/smbios"
+)
+
+// Generic errors.
+var (
+	ErrInvalidArg = errors.New("invalid argument")
 )
 
 // We need this for testing.

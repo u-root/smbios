@@ -93,6 +93,12 @@ func (t *Table) WriteBytes(v []byte) {
 	t.Data = append(t.Data, v...)
 }
 
+// Write writes arbitrary bytes to the Table.
+func (t *Table) Write(p []byte) (int, error) {
+	t.Data = append(t.Data, p...)
+	return len(p), nil
+}
+
 // GetByteAt returns a byte from the structured part at the specified offset.
 func (t *Table) GetByteAt(offset int) (uint8, error) {
 	if offset > len(t.Data)-1 {
