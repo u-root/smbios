@@ -5,18 +5,16 @@
 package dmidecode
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/u-root/smbios"
 )
 
-// Much of this is auto-generated. If adding a new type, see README for instructions.
-
 // IPMIDeviceInfo is defined in DSP0134 7.39.
 type IPMIDeviceInfo struct {
-	smbios.Table
+	smbios.Header                    `smbios:"-"`
 	InterfaceType                    BMCInterfaceType // 04h
 	IPMISpecificationRevision        uint8            // 05h
 	I2CSlaveAddress                  uint8            // 06h
@@ -29,12 +27,12 @@ type IPMIDeviceInfo struct {
 // ParseIPMIDeviceInfo parses a generic smbios.Table into IPMIDeviceInfo.
 func ParseIPMIDeviceInfo(t *smbios.Table) (*IPMIDeviceInfo, error) {
 	if t.Type != smbios.TableTypeIPMIDeviceInfo {
-		return nil, fmt.Errorf("invalid table type %d", t.Type)
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedTableType, t.Type)
 	}
 	if t.Len() < 0x12 {
-		return nil, errors.New("required fields missing")
+		return nil, fmt.Errorf("%w: IPMI device info table must be at least %d bytes", io.ErrUnexpectedEOF, 0x12)
 	}
-	di := &IPMIDeviceInfo{Table: *t}
+	di := &IPMIDeviceInfo{Header: t.Header}
 	if _, err := parseStruct(t, 0 /* off */, false /* complete */, di); err != nil {
 		return nil, err
 	}
