@@ -54,6 +54,45 @@ func (t *Table) Len() int {
 	return len(t.Data) + headerLen
 }
 
+// WriteByte writes one byte to the table's data.
+func (t *Table) WriteByte(b uint8) {
+	t.Data = append(t.Data, b)
+}
+
+// WriteWord writes two little endian bytes to the table's data.
+func (t *Table) WriteWord(v uint16) {
+	t.Data = append(t.Data, 0, 0)
+	binary.LittleEndian.PutUint16(t.Data[len(t.Data)-2:], v)
+}
+
+// WriteDWord writes four little endian bytes to the table's data.
+func (t *Table) WriteDWord(v uint32) {
+	t.Data = append(t.Data, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(t.Data[len(t.Data)-4:], v)
+}
+
+// WriteQWord writes eight little endian bytes to the table's data.
+func (t *Table) WriteQWord(v uint64) {
+	t.Data = append(t.Data, 0, 0, 0, 0, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint64(t.Data[len(t.Data)-8:], v)
+}
+
+// WriteString writes a string index and appends the string to table.
+func (t *Table) WriteString(s string) {
+	if s == "" {
+		t.WriteByte(0)
+	} else {
+		t.Strings = append(t.Strings, s)
+		// strings are 1-indexed bytes.
+		t.WriteByte(uint8(len(t.Strings)))
+	}
+}
+
+// WriteBytes writes arbitrary bytes to the Table.
+func (t *Table) WriteBytes(v []byte) {
+	t.Data = append(t.Data, v...)
+}
+
 // GetByteAt returns a byte from the structured part at the specified offset.
 func (t *Table) GetByteAt(offset int) (uint8, error) {
 	if offset > len(t.Data)-1 {

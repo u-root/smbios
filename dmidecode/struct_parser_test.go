@@ -199,5 +199,63 @@ func TestParseStructWithTPMDevice(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestToTable(t *testing.T) {
+	type foobar struct {
+		Foo uint8 `smbios:"default=0xe"`
+	}
+	type someStruct struct {
+		Off0  uint64
+		Off8  uint8
+		Off9  string
+		_     uint8 `smbios:"-"`
+		Off10 uint16
+		_     uint8 `smbios:"-"`
+		Off11 uint8 `smbios:"default=0xf"`
+		Off12 foobar
+	}
+
+	for _, tt := range []struct {
+		value any
+		err   error
+		want  *smbios.Table
+	}{
+		{
+			value: &someStruct{
+				Off0:  0x01,
+				Off8:  0xff,
+				Off9:  "foobar",
+				Off10: 0x102,
+				Off11: 0x05,
+				Off12: foobar{
+					Foo: 0xe,
+				},
+			},
+			want: &smbios.Table{
+				Data: []byte{
+					0x1, 0x0, 0x0, 0x0,
+					0x0, 0x0, 0x0, 0x0,
+					0xff,     // Off8
+					0x1,      // Off9
+					0x2, 0x1, // Off10
+					0x5, // Off11
+					0xe, // foobar
+				},
+				Strings: []string{
+					"foobar",
+				},
+			},
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			got := &smbios.Table{}
+			if _, err := toTable(got, tt.value); !errors.Is(err, tt.err) {
+				t.Errorf("toTable = %v, want %v", err, tt.err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("toTable = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

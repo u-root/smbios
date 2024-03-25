@@ -21,9 +21,14 @@ type fieldParser interface {
 	ParseField(t *smbios.Table, off int) (int, error)
 }
 
+type fieldWriter interface {
+	WriteField(t *smbios.Table) (int, error)
+}
+
 var (
 	fieldTagKey              = "smbios" // Tag key for annotations.
 	fieldParserInterfaceType = reflect.TypeOf((*fieldParser)(nil)).Elem()
+	fieldWriterInterfaceType = reflect.TypeOf((*fieldWriter)(nil)).Elem()
 )
 
 func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, error) {
@@ -151,4 +156,77 @@ func parseStruct(t *smbios.Table, off int, complete bool, sp interface{}) (int, 
 	}
 
 	return off, nil
+}
+
+func toTable(t *smbios.Table, sp interface{}) (int, error) {
+	sv, ok := sp.(reflect.Value)
+	if !ok {
+		sv = reflect.Indirect(reflect.ValueOf(sp)) // must be a pointer to struct then, dereference it
+	}
+	svtn := sv.Type().Name()
+
+	//fmt.Printf("toTable t %s\n", svtn)
+
+	n := 0
+	for i := 0; i < sv.NumField(); i++ {
+		f := sv.Type().Field(i)
+		fv := sv.Field(i)
+		ft := fv.Type()
+		tags := f.Tag.Get(fieldTagKey)
+		//fmt.Printf("toTable XX %02Xh f %s t %s k %s %s\n", n, f.Name, f.Type.Name(), fv.Kind(), tags)
+		// Check tags first
+		ignore := false
+		for _, tag := range strings.Split(tags, ",") {
+			tp := strings.Split(tag, "=")
+			switch tp[0] {
+			case "-":
+				ignore = true
+			}
+		}
+		if ignore {
+			continue
+		}
+		// fieldWriter takes precedence.
+		if reflect.PtrTo(ft).Implements(fieldWriterInterfaceType) {
+			m, err := fv.Addr().Interface().(fieldWriter).WriteField(t)
+			n += m
+			if err != nil {
+				return n, err
+			}
+			continue
+		}
+
+		var verr error
+		switch fv.Kind() {
+		case reflect.Uint8:
+			t.WriteByte(uint8(fv.Uint()))
+			n++
+		case reflect.Uint16:
+			t.WriteWord(uint16(fv.Uint()))
+			n += 2
+		case reflect.Uint32:
+			t.WriteDWord(uint32(fv.Uint()))
+			n += 4
+		case reflect.Uint64:
+			t.WriteQWord(uint64(fv.Uint()))
+			n += 8
+		case reflect.String:
+			t.WriteString(fv.String())
+			n++
+		case reflect.Array:
+			t.WriteBytes(fv.Slice(0, fv.Len()).Bytes())
+			n += fv.Len()
+		case reflect.Struct:
+			var m int
+			// If it's a struct, just invoke toTable recursively.
+			m, verr = toTable(t, fv)
+			n += m
+		default:
+			return n, fmt.Errorf("%s.%s: unsupported type %s", svtn, f.Name, fv.Kind())
+		}
+		if verr != nil {
+			return n, fmt.Errorf("failed to parse %s.%s: %w", svtn, f.Name, verr)
+		}
+	}
+	return n, nil
 }
